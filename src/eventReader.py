@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 
 import logging 
+import msgpack
 
 from kafka.structs import TopicPartition, OffsetAndTimestamp
 
@@ -66,8 +67,10 @@ class EventReader():
 
             #self.performUpdate(msgAsDict)
 
-#EXAMPLE
+
 """
+#EXAMPLE
+
 currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
 eventReader = EventReader(currentTS,600*1000)
 eventReader.start()"""

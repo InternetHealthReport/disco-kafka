@@ -3,6 +3,7 @@ from datetime import datetime
 import time
 import json
 from ripe.atlas.cousteau import AtlasResultsRequest
+import msgpack
 
 producer = KafkaProducer(bootstrap_servers='localhost:9092', acks=0,
     value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
