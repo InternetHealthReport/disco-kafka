@@ -5,7 +5,7 @@ import json
 from ripe.atlas.cousteau import AtlasResultsRequest
 
 producer = KafkaProducer(bootstrap_servers='localhost:9092', acks=0,
-    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+    value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
     batch_size=65536,linger_ms=4000,compression_type='gzip')
 
 topicName = "atlasLiveData"
