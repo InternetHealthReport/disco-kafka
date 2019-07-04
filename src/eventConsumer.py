@@ -1,3 +1,7 @@
+"""
+Reads Atlas Live Events from Kafka for a time window
+"""
+
 from kafka import KafkaConsumer
 import json
 import time
@@ -9,7 +13,7 @@ import msgpack
 
 from kafka.structs import TopicPartition, OffsetAndTimestamp
 
-class EventReader():
+class EventConsumer():
     def __init__(self,startTS,windowInMS):
         self.topicName = "atlasLiveData"
         self.startTS = startTS
@@ -72,5 +76,5 @@ class EventReader():
 #EXAMPLE
 
 currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
-eventReader = EventReader(currentTS,600*1000)
+eventReader = EventConsumer(currentTS,600*1000)
 eventReader.start()"""
