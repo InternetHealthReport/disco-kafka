@@ -48,7 +48,7 @@ class ProbeDataProducer():
 
             timestampInMS = timestamp * 1000
 
-            producer.send(topicName,key=bytes(str(currentId), "utf-8"),value=record,timestamp_ms=timestampInMS) 
+            self.producer.send(self.topicName,key=bytes(str(currentId), "utf-8"),value=record,timestamp_ms=timestampInMS) 
 
 
 

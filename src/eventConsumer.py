@@ -15,7 +15,7 @@ from kafka.structs import TopicPartition, OffsetAndTimestamp
 
 class EventConsumer():
     def __init__(self,startTS,windowInMS):
-        self.topicName = "atlasLiveData"
+        self.topicName = "ihr_atlas_live"
         self.startTS = startTS
 
         self.consumer = KafkaConsumer(auto_offset_reset="earliest",bootstrap_servers=['localhost:9092'],consumer_timeout_ms=1000,value_deserializer=lambda v: msgpack.unpackb(v, raw=False))
@@ -29,9 +29,9 @@ class EventConsumer():
         if observer not in self.observers:
             self.observers.append(observer)
 
-    def performUpdate(self,data):
+    def notifyObservers(self,data):
         for observer in self.observers:
-            observer.updateFunc()
+            observer.hookFunc(data)
 
     def start(self):
         timestampToSeek = self.startTS * 1000
@@ -67,9 +67,7 @@ class EventConsumer():
 
             msgAsDict = message.value
 
-            print(msgAsDict)
-
-            #self.performUpdate(msgAsDict)
+            self.notifyObservers(msgAsDict)
 
 
 """
