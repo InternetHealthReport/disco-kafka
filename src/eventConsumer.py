@@ -31,7 +31,7 @@ class EventConsumer():
 
     def notifyObservers(self,data):
         for observer in self.observers:
-            observer.hookFunc(data)
+            observer.eventDataProcessor(data)
 
     def start(self):
         timestampToSeek = self.startTS * 1000
@@ -42,16 +42,14 @@ class EventConsumer():
         offsets = self.consumer.offsets_for_times({self.topicPartition:timestampToSeek})
 
         while offsets[self.topicPartition] is None:
-            #recheck after 20 seconds
-            time.sleep(20) 
+            #recheck after 10 seconds
+            time.sleep(10) 
 
-            currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
+            currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())*1000
             if currentTS > timestampToBreakAt:
                 return
 
             offsets = self.consumer.offsets_for_times({self.topicPartition:timestampToSeek})
-
-        print(offsets)
 
         theOffset = offsets[self.topicPartition].offset
 
@@ -75,4 +73,5 @@ class EventConsumer():
 
 currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
 eventReader = EventConsumer(currentTS,600*1000)
+eventReader.attach(object) #Attach object that defines eventDataProcessor function
 eventReader.start()"""

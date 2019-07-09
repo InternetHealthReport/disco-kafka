@@ -89,7 +89,7 @@ class ProbeDataConsumer():
 
     def notifyObservers(self,data):
         for observer in self.observers:
-            observer.hookFunc(data)
+            observer.probeDataProcessor(data)
 
     def start(self):
         for message in self.consumer:
@@ -102,4 +102,5 @@ class ProbeDataConsumer():
 #EXAMPLE
 
 probeCon = ProbeDataConsumer(asnFilters=[57169],countryFilters=["AT"],proximityFilters=[[16.4375,47.3695],[15.4375,47.3695]])
+probeCon.attach(object) #Attach object that defines probeDataProcessor function
 probeCon.start()"""

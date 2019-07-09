@@ -35,8 +35,15 @@ class EventProducer():
                         timestamp = timestamp*1000      #convert to milliseconds
                         self.producer.send(self.topicName,ent,timestamp_ms=timestamp)
                         print("Record pushed")
+                else:
+                    print("Fetch Failed!")
                 READ_OK = True
                 time.sleep(WINDOW)
                 currentTS += (WINDOW + 1)
             except Exception as e:
                 print("Error: ",e)
+
+
+
+#EXAMPLE
+EventProducer().start()
