@@ -18,7 +18,7 @@ class EventProducer():
         self.topicName = "ihr_atlas_live"
 
     def start(self):
-        WINDOW = 600
+        WINDOW = 60
         currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
         while True:
             try:
@@ -42,7 +42,6 @@ class EventProducer():
                 currentTS += (WINDOW + 1)
             except Exception as e:
                 print("Error: ",e)
-
 
 
 #EXAMPLE

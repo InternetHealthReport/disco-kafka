@@ -1,36 +1,43 @@
 from geopy.geocoders import Nominatim
+import time
 
 class StreamSplitter():
-    def __init__(self,probeData,splitByASN=True,splitByCity=True,splitByCountry=True):
+    def __init__(self,probeData,splitByASN=True,splitByState=True,splitByCountry=True):
         self.probeIDToCountry = {}
-        self.probeIDToCity = {}
+        self.probeIDToState = {}
         self.initProbeLocations(probeData)
 
         self.splitByASN = splitByASN
-        self.splitByCity = splitByCity
+        self.splitByState = splitByState
         self.splitByCountry = splitByCountry
 
         self.asnStreams = {}
-        self.cityStreams = {}
+        self.stateStreams = {}
         self.countryStreams = {}
 
     def initProbeLocations(self,probeData):
-        geolocator = Nominatim(user_agent="specify_your_app_name_here")
+        #geolocator = Nominatim(user_agent="specify_your_app_name_here")
 
         for probeId, probeDatum in probeData.items():
             country = probeDatum["country_code"]
             self.probeIDToCountry[probeId] = country
 
+            """ #Move state finding to probeDataProducer
             try:
                 probeLat = probeDatum["geometry"]["coordinates"][0]
                 probeLong = probeDatum["geometry"]["coordinates"][1]
 
-                query = str(probeLat)+"00, "+str(probeLong)+"00"
+                #query = str(probeLat)+"00, "+str(probeLong)+"00"
                 #probeCity = geolocator.reverse(query)
-                probeCity = geolocator.reverse([probeLat,probeLong])
-                self.probeIDToCity[probeId] = probeCity
+                #query = (probeLat,probeLong)
+                #print("Query: ",query)
+                probeAddress = geolocator.reverse("{}, {}".format(probeLat,probeLong)).raw["address"]]
+                probeState = probeAddress["state"]
+
+                self.probeIDToState[probeId] = probeState
             except Exception as e:
-                print(e)
+                print("Error in reverse func: ",e,)"""
+        
 
     def addEvent(self,event):
         eventProbeID = event["prb_id"]
@@ -39,18 +46,18 @@ class StreamSplitter():
             eventASN = event["asn"]
 
             if eventASN not in self.asnStreams.keys():
-                asnStreams[eventASN] = [event]
+                self.asnStreams[eventASN] = [event]
             else:
-                asnStreams[eventASN].append(event)
+                self.asnStreams[eventASN].append(event)
 
         
-        if self.splitByCity:
+        if self.splitByState:
             try:
-                eventCity = self.probeIDToCity[eventProbeID]
-                if eventCity not in self.cityStreams.keys():
-                    self.cityStreams[eventCity] = [event]
+                eventState = self.probeIDToState[eventProbeID]
+                if eventState not in self.stateStreams.keys():
+                    self.stateStreams[eventState] = [event]
                 else:
-                    self.cityStreams[eventCity].append(event)
+                    self.stateStreams[eventState].append(event)
             except Exception as e:
                 print(e)
 
@@ -69,5 +76,5 @@ class StreamSplitter():
         for event in events:
             self.addEvent(event)
 
-        return {"ASN":self.asnStreams,"CITY":self.cityStreams,"COUNTRY":self.countryStreams}
+        return {"ASN":self.asnStreams,"STATE":self.stateStreams,"COUNTRY":self.countryStreams}
 

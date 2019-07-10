@@ -1,6 +1,7 @@
 from eventConsumer import EventConsumer
 from probeDataConsumer import ProbeDataConsumer
 from streamSplitter import StreamSplitter
+from burstDetector import BurstDetector
 from datetime import datetime
 
 class Tester():
@@ -36,15 +37,47 @@ class Tester():
             eventReader.attach(self)
             eventReader.start()
 
+            print("Number of events: ",len(self.eventData))
+
             streamSplitter = StreamSplitter(self.probeData)
             streams = streamSplitter.getStreams(self.eventData)
 
-            print(streams)
+            burstDetector = BurstDetector(streams,self.probeData,timeRange=8640000)
+            bursts = burstDetector.detect()
+
+            print(bursts)
 
             self.eventData = []
-            del eventReader, streamSplitter
+            del eventReader, streamSplitter, burstDetector
         
         print("Done!")
 
+
 tester = Tester("disconnect")
 tester.run()
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+from geopy.geocoders import Nominatim
+
+geolocator = Nominatim(user_agent="specify_your_app_name_here")
+probeCity = geolocator.reverse("6.1285, 45.9005")
+print(probeCity.raw)
+"""
+
+"""
+from googlegeocoder import GoogleGeocoder
+geocoder = GoogleGeocoder("AIzaSyAAKBQMoxN-O0Zv_oO7N7y89b2SQESmkLo")
+reverse = geocoder.get((33.9395164, -118.2414404))
+print(reverse)
+"""
