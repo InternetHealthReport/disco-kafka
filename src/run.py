@@ -42,10 +42,12 @@ class Tester():
             streamSplitter = StreamSplitter(self.probeData)
             streams = streamSplitter.getStreams(self.eventData)
 
+            print("Streams: ",streams)
+
             burstDetector = BurstDetector(streams,self.probeData,timeRange=8640000)
             bursts = burstDetector.detect()
 
-            print(bursts)
+            print("Bursts: ",bursts)
 
             self.eventData = []
             del eventReader, streamSplitter, burstDetector
@@ -57,15 +59,22 @@ tester = Tester("disconnect")
 tester.run()
 
 
+"""
+from kafka.admin import KafkaAdminClient, ConfigResource, ConfigResourceType
 
+admin = KafkaAdminClient()
+admin.alter_configs([ConfigResource(ConfigResourceType.TOPIC,"ihr_atlas_probe_archive",{"retention.ms":1,"cleanup.policy":"compact"})])
+desc = admin.describe_configs([ConfigResource(ConfigResourceType.TOPIC,"ihr_atlas_probe_archive")])
+print(desc)
+"""
 
+"""
+import reverse_geocoder as rg
 
-
-
-
-
-
-
+coordinates = (51.5214588,-0.1729636),(9.936033, 76.259952),(37.38605,-122.08385)
+results = rg.search(coordinates) # default mode = 2
+print(results)
+"""
 
 """
 from geopy.geocoders import Nominatim

@@ -5,6 +5,7 @@ Pushes Probe Archive Data to Kafka for previous day
 import requests, json
 from kafka import KafkaProducer
 from datetime import datetime, timedelta
+import reverse_geocoder as rg
 
 import msgpack
 
@@ -25,15 +26,49 @@ class ProbeDataProducer():
         admin = KafkaAdminClient()
         altered = admin.alter_configs([ConfigResource(ConfigResourceType.TOPIC,"ihr_atlas_probe_archive",{"retention.ms":1,"cleanup.policy":"compact"})])
 
+    def augmentWithLocation(self,record):
+        probeLong = record["geometry"]["coordinates"][0]
+        probeLat = record["geometry"]["coordinates"][1]
+
+        if (not probeLat) or (not probeLong):
+            lowPrecisionLoc = None
+            highPrecisionLoc = None
+            adminCoordinates = None
+        else:
+            probeAddress = rg.search((float(probeLat),float(probeLong)))[0]
+
+            admin1 = probeAddress["admin1"]
+            admin2 = probeAddress["admin2"]
+
+            if admin1 == "":
+                lowPrecisionLoc = None
+            else:
+                lowPrecisionLoc = admin1 + ", " + probeAddress["cc"]
+
+            if admin2 == "":
+                highPrecisionLoc = None
+            else:
+                highPrecisionLoc = admin2 + ", " + lowPrecisionLoc
+
+            adminCoordinates = {"lat":probeAddress["lat"],"lon":probeAddress["lon"]}
+
+        record["admin1"] = lowPrecisionLoc
+        record["admin2"] = highPrecisionLoc
+        record["adminCoordinates"] = adminCoordinates
+
+        return record
+
+
     def start(self):
+        """
         link = "https://atlas.ripe.net/api/v2/probes/archive?day="+self.date
 
         data = requests.get(link).json()
-
         """
+
         with open("../data/probeArchives/2019-07-02.json") as myFile:
             data = json.loads(myFile.read())
-        """
+    
 
         filename = data["source_filename"]
         timestamp = data["snapshot_datetime"]
@@ -43,12 +78,18 @@ class ProbeDataProducer():
             #Push individual record to Kafka
             record["source_filename"] = filename
             record["snapshot_datetime"] = timestamp
+            record = self.augmentWithLocation(record)
 
             currentId = record["id"]
 
             timestampInMS = timestamp * 1000
 
+            print(record)
+
             self.producer.send(self.topicName,key=bytes(str(currentId), "utf-8"),value=record,timestamp_ms=timestampInMS) 
 
-
+"""
+#EXAMPLE
+ProbeDataProducer().start()
+"""
 

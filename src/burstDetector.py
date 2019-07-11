@@ -1,10 +1,12 @@
 import numpy as np
-import pybursts
+from pybursts import pybursts
 
 class BurstDetector():
     def __init__(self,streams,probeData,timeRange):
         self.asnStreams = streams["ASN"]
         self.countryStreams = streams["COUNTRY"]
+        self.admin1Streams = streams["ADMIN1"]
+        self.admin2Streams = streams["ADMIN2"]
         #TODO: add stateStreams
 
         self.probeData = probeData
@@ -16,12 +18,17 @@ class BurstDetector():
     def initNumProbes(self):
         self.numTotalProbes["ASN"] = {}
         self.numTotalProbes["COUNTRY"] = {}
+        self.numTotalProbes["ADMIN1"] = {}
+        self.numTotalProbes["ADMIN2"] = {}
 
-        for probeId, probeDatum in probeData.items():
+        for probeId, probeDatum in self.probeData.items():
             probeASNv4 = probeDatum["asn_v4"]
             probeASNv6 = probeDatum["asn_v6"]
 
             probeCountry = probeDatum["country_code"]
+
+            probeAdmin1 = probeDatum["admin1"]
+            probeAdmin2 = probeDatum["admin2"]
 
             if probeASNv4 not in self.numTotalProbes["ASN"].keys():
                 self.numTotalProbes["ASN"][probeASNv4] = 1
@@ -39,10 +46,20 @@ class BurstDetector():
             else:
                 self.numTotalProbes["COUNTRY"][probeCountry] += 1
 
+            if probeAdmin1 not in self.numTotalProbes["ADMIN1"].keys():
+                self.numTotalProbes["ADMIN1"][probeAdmin1] = 1
+            else:
+                self.numTotalProbes["ADMIN1"][probeAdmin1] += 1
+
+            if probeAdmin2 not in self.numTotalProbes["ADMIN2"].keys():
+                self.numTotalProbes["ADMIN2"][probeAdmin2] = 1
+            else:
+                self.numTotalProbes["ADMIN2"][probeAdmin2] += 1
+
     def kleinberg(self,timeSeries,numOfProbes):
         timeSeries = np.array(timeSeries)
     
-        bursts = pybursts.kleinberg(timeStamps,s=2,gamma=0.5,T=self.timeRange,n=numOfProbes)
+        bursts = pybursts.kleinberg(timeSeries,s=2,gamma=0.5,T=self.timeRange,n=numOfProbes)
         
         return bursts
 
@@ -71,7 +88,7 @@ class BurstDetector():
         burstsByASN = {}
 
         for asn, stream in self.asnStreams.items():
-            numTotalProbes = numTotalProbes["ASN"][asn]
+            numTotalProbes = self.numTotalProbes["ASN"][asn]
             timeSeries = self.getTimeSeries(stream)
             bursts = self.kleinberg(timeSeries,numTotalProbes)
 
@@ -81,13 +98,33 @@ class BurstDetector():
         burstsByCountry = {}
 
         for country, stream in self.countryStreams.items():
-            numTotalProbes = numTotalProbes["COUNTRY"][country]
+            numTotalProbes = self.numTotalProbes["COUNTRY"][country]
             timeSeries = self.getTimeSeries(stream)
             bursts = self.kleinberg(timeSeries,numTotalProbes)
 
             burstsByCountry[country] = bursts
 
-        return {"ASN":burstsByASN, "COUNTRY":burstsByCountry}
+        #Admin1 Streams
+        burstsByAdmin1 = {}
+
+        for admin1, stream in self.admin1Streams.items():
+            numTotalProbes = self.numTotalProbes["ADMIN1"][admin1]
+            timeSeries = self.getTimeSeries(stream)
+            bursts = self.kleinberg(timeSeries,numTotalProbes)
+
+            burstsByAdmin1[admin1] = bursts
+
+        #Admin1 Streams
+        burstsByAdmin2 = {}
+
+        for admin2, stream in self.admin2Streams.items():
+            numTotalProbes = self.numTotalProbes["ADMIN2"][admin2]
+            timeSeries = self.getTimeSeries(stream)
+            bursts = self.kleinberg(timeSeries,numTotalProbes)
+
+            burstsByAdmin2[admin2] = bursts
+
+        return {"ASN":burstsByASN, "COUNTRY":burstsByCountry, "ADMIN1":burstsByAdmin1, "ADMIN2":burstsByAdmin2}
 
 
 
