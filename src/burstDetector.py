@@ -15,6 +15,8 @@ class BurstDetector():
 
         self.timeRange = timeRange
 
+        self.minProbes = 5
+
     def initNumProbes(self):
         self.numTotalProbes["ASN"] = {}
         self.numTotalProbes["COUNTRY"] = {}
@@ -88,17 +90,28 @@ class BurstDetector():
         burstsByASN = {}
 
         for asn, stream in self.asnStreams.items():
-            numTotalProbes = self.numTotalProbes["ASN"][asn]
-            timeSeries = self.getTimeSeries(stream)
-            bursts = self.kleinberg(timeSeries,numTotalProbes)
+            try:
+                numTotalProbes = self.numTotalProbes["ASN"][asn]
 
-            burstsByASN[asn] = bursts
+                if numTotalProbes < self.minProbes:
+                    continue
+
+                timeSeries = self.getTimeSeries(stream)
+                bursts = self.kleinberg(timeSeries,numTotalProbes)
+
+                burstsByASN[asn] = bursts
+            except Exception as e:
+                pass
 
         #Country Streams
         burstsByCountry = {}
 
         for country, stream in self.countryStreams.items():
             numTotalProbes = self.numTotalProbes["COUNTRY"][country]
+
+            if numTotalProbes < self.minProbes:
+                continue
+
             timeSeries = self.getTimeSeries(stream)
             bursts = self.kleinberg(timeSeries,numTotalProbes)
 
@@ -109,6 +122,10 @@ class BurstDetector():
 
         for admin1, stream in self.admin1Streams.items():
             numTotalProbes = self.numTotalProbes["ADMIN1"][admin1]
+
+            if numTotalProbes < self.minProbes:
+                continue
+
             timeSeries = self.getTimeSeries(stream)
             bursts = self.kleinberg(timeSeries,numTotalProbes)
 
@@ -119,6 +136,10 @@ class BurstDetector():
 
         for admin2, stream in self.admin2Streams.items():
             numTotalProbes = self.numTotalProbes["ADMIN2"][admin2]
+
+            if numTotalProbes < self.minProbes:
+                continue
+
             timeSeries = self.getTimeSeries(stream)
             bursts = self.kleinberg(timeSeries,numTotalProbes)
 

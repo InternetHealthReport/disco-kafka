@@ -24,6 +24,9 @@ class ProbeDataConsumer():
         """
         Checks whether record passes the specified filters
         """
+        
+        if record["status"]["name"] == "Abandoned":     #Abandoned probes should be ignored
+            return False
 
         probeASNv4 = record["asn_v4"]
         probeASNv6 = record["asn_v6"]

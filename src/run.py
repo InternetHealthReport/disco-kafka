@@ -3,6 +3,9 @@ from probeDataConsumer import ProbeDataConsumer
 from streamSplitter import StreamSplitter
 from burstDetector import BurstDetector
 from datetime import datetime
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 class Tester():
     def __init__(self,eventType):
@@ -19,40 +22,98 @@ class Tester():
     def eventDataProcessor(self,data):
         #get event probe
         eventProbeId = data["prb_id"]
+        eventType = data["event"]
 
         #see if it is relevant
-        if eventProbeId in self.probeData.keys():
+        if (eventType == self.eventType) and (eventProbeId in self.probeData.keys()):
             self.eventData.append(data)
 
     def run(self):
         #Populate probe id's
-        probeCon = ProbeDataConsumer()
+        probeCon = ProbeDataConsumer(countryFilters=["VE"])
         probeCon.attach(self)
         probeCon.start()
 
-        #start reading events
-        while True:
-            currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
-            eventReader = EventConsumer(currentTS,60*1000)
+        print("Num Probes: ",len(self.probeData))
+
+        timeStamp = 1553385600
+        windowToRead = 3600*24
+        windowToSlide = 3600
+        timesArray = []
+        dataArray = []
+
+        while timeStamp < 1553644800:
+            eventReader = EventConsumer(timeStamp,windowToRead)
             eventReader.attach(self)
             eventReader.start()
-
-            print("Number of events: ",len(self.eventData))
 
             streamSplitter = StreamSplitter(self.probeData)
             streams = streamSplitter.getStreams(self.eventData)
 
-            print("Streams: ",streams)
-
-            burstDetector = BurstDetector(streams,self.probeData,timeRange=8640000)
+            burstDetector = BurstDetector(streams,self.probeData,timeRange=windowToRead)
             bursts = burstDetector.detect()
 
-            print("Bursts: ",bursts)
+            try:
+                bursts = bursts["COUNTRY"]["VE"]
+
+                for datum in bursts:
+                    score = datum[0]
+                    tsStart = datum[1]
+                    tsEnd = datum[2]
+
+                    theTimeStart = tsStart
+                    theTimeEnd = tsEnd
+
+                    dataArray.append(score)
+                    timesArray.append(theTimeStart)
+
+                    print(score,theTimeStart,theTimeEnd)
+            except:
+                pass
+
+            print("No of events: ",len(self.eventData))
+            print("-----")
 
             self.eventData = []
             del eventReader, streamSplitter, burstDetector
+
+            timeStamp += windowToSlide
+
+        maxScores = []
+        scoreDict = {}
+        for score, timeStart in zip(dataArray,timesArray):
+            if timeStart not in scoreDict.keys():
+                scoreDict[timeStart] = score
+            else:
+                oldScore = scoreDict[timeStart]
+
+                if score > oldScore:
+                    scoreDict[timeStart] = score
+
+        import collections
+        scoreDict = collections.OrderedDict(sorted(scoreDict.items()))
+
+        print("Scores: ",scoreDict)
+
+        maxScores = scoreDict.values()
+        uniqueStartTimes = scoreDict.keys()
+        asDates = [datetime.fromtimestamp(x).strftime("%d-%b-%Y (%H:%M:%S)") for x in uniqueStartTimes]
+        print(asDates)
+
+        fig, ax = plt.subplots()
+        ax.plot(asDates,maxScores, '-')
+
+        print(len(uniqueStartTimes))
+        
+        print(len(asDates))
+
+        ax.set_xticklabels(asDates, rotation=75)
+        plt.show()
         
         print("Done!")
+
+
+
 
 
 tester = Tester("disconnect")

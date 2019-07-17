@@ -17,7 +17,7 @@ class EventProducer():
 
         self.topicName = "ihr_atlas_live"
 
-    def start(self):
+    def startLive(self):
         WINDOW = 60
         currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
         while True:
@@ -27,8 +27,8 @@ class EventProducer():
                     "start": datetime.utcfromtimestamp(currentTS-WINDOW),
                     "stop": datetime.utcfromtimestamp(currentTS),
                 }
+
                 is_success, results = AtlasResultsRequest(**kwargs).create()
-                READ_OK = False
                 if is_success:
                     for ent in results:
                         timestamp = ent["timestamp"]
@@ -37,12 +37,32 @@ class EventProducer():
                         print("Record pushed")
                 else:
                     print("Fetch Failed!")
-                READ_OK = True
+
                 time.sleep(WINDOW)
                 currentTS += (WINDOW + 1)
             except Exception as e:
                 print("Error: ",e)
 
+    def startPeriod(self,startTS,endTS):
+        kwargs = {
+            "msm_id": 7000,
+            "start": datetime.utcfromtimestamp(startTS),
+            "stop": datetime.utcfromtimestamp(endTS),
+        }
+
+        is_success, results = AtlasResultsRequest(**kwargs).create()
+
+        if is_success:
+            for ent in results:
+                timestamp = ent["timestamp"]
+                timestamp = timestamp*1000      #convert to milliseconds
+                self.producer.send(self.topicName,ent,timestamp_ms=timestamp)
+                print("Record pushed -- ",timestamp)
+        else:
+            print("Fetch Failed!")
+
+
+
 
 #EXAMPLE
-EventProducer().start()
+EventProducer().startPeriod(1553385600,1553644800)

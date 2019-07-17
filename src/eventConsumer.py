@@ -14,14 +14,14 @@ import msgpack
 from kafka.structs import TopicPartition, OffsetAndTimestamp
 
 class EventConsumer():
-    def __init__(self,startTS,windowInMS):
+    def __init__(self,startTS,windowInSeconds):
         self.topicName = "ihr_atlas_live"
         self.startTS = startTS
 
         self.consumer = KafkaConsumer(auto_offset_reset="earliest",bootstrap_servers=['localhost:9092'],consumer_timeout_ms=1000,value_deserializer=lambda v: msgpack.unpackb(v, raw=False))
         self.topicPartition = TopicPartition(self.topicName,0)
 
-        self.windowSize = windowInMS #milliseconds
+        self.windowSize = windowInSeconds * 1000    #milliseconds
 
         self.observers = []
 
@@ -37,7 +37,9 @@ class EventConsumer():
         timestampToSeek = self.startTS * 1000
         timestampToBreakAt = timestampToSeek + self.windowSize
 
-        print("Time Start: ",timestampToSeek,", Time End: ",timestampToBreakAt)
+        #print("Time Start: ",timestampToSeek,", Time End: ",timestampToBreakAt)
+
+        self.consumer.assign([self.topicPartition])
 
         offsets = self.consumer.offsets_for_times({self.topicPartition:timestampToSeek})
 
@@ -53,10 +55,10 @@ class EventConsumer():
 
         theOffset = offsets[self.topicPartition].offset
 
-        self.consumer.assign([self.topicPartition])
+        print(theOffset)
 
         self.consumer.seek(self.topicPartition,theOffset)
-
+        
         for message in self.consumer:
             messageTimestamp = message.timestamp
 

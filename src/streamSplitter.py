@@ -49,7 +49,7 @@ class StreamSplitter():
                 else:
                     self.countryStreams[eventCountry].append(event)
             except Exception as e:
-                print(e)
+                print("Error while splitting country: ",e)
 
         if self.splitByAdmin1:
             try:
@@ -59,7 +59,8 @@ class StreamSplitter():
                 else:
                     self.admin1Streams[eventAdmin1].append(event)
             except Exception as e:
-                print(e)
+                if e != "None":
+                    print("Error while splitting admin1: ",e)
 
         if self.splitByAdmin2:
             try:
@@ -69,7 +70,7 @@ class StreamSplitter():
                 else:
                     self.admin2Streams[eventAdmin2].append(event)
             except Exception as e:
-                print(e)
+                pass
         
 
     def getStreams(self,events):
