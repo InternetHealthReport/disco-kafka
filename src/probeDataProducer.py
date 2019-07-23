@@ -66,13 +66,15 @@ class ProbeDataProducer():
         data = requests.get(link).json()
         """
 
-        with open("../data/probeArchives/2019-07-02.json") as myFile:
+        with open("../data/probeArchives/2016-12-12.json") as myFile:
             data = json.loads(myFile.read())
     
 
         filename = data["source_filename"]
         timestamp = data["snapshot_datetime"]
         data = data["results"]
+
+        count = 0
 
         for record in data:
             #Push individual record to Kafka
@@ -84,12 +86,14 @@ class ProbeDataProducer():
 
             timestampInMS = timestamp * 1000
 
-            print(record)
+            count += 1
+            if count % 1000 == 0:
+                print(count," records pushed")
 
             self.producer.send(self.topicName,key=bytes(str(currentId), "utf-8"),value=record,timestamp_ms=timestampInMS) 
 
-"""
+
 #EXAMPLE
 ProbeDataProducer().start()
-"""
+
 

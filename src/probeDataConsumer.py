@@ -7,7 +7,7 @@ from utils import haversine
 import msgpack
 
 class ProbeDataConsumer():
-    def __init__(self,asnFilters=[],countryFilters=[],proximityFilters=[]):
+    def __init__(self,asnFilters=[],countryFilters=[],proximityFilters=[],startTS=None,endTS=None):
         self.topicName = "ihr_atlas_probe_archive"
 
         self.consumer = KafkaConsumer(self.topicName,auto_offset_reset="earliest",bootstrap_servers=['localhost:9092'],consumer_timeout_ms=1000,value_deserializer=lambda v: msgpack.unpackb(v, raw=False))
@@ -20,13 +20,28 @@ class ProbeDataConsumer():
 
         self.observers = []
 
+        self.startTS = startTS
+        self.endTS = endTS
+
     def isRelevant(self,record):
         """
         Checks whether record passes the specified filters
         """
         
-        if record["status"]["name"] == "Abandoned":     #Abandoned probes should be ignored
+        if record["status"]["name"] == "Abandoned" and (self.startTS is not None):             #Probes abandoned before measurement period should be dropped
+            if record["status"]["since"] < self.startTS:
+                return False
+
+        if record["status"]["name"] == "Never Connected":       #Never connected probes should be dropped
             return False
+
+        if (record["status"]["name"] == "Connected") and (self.endTS is not None):          #Probes connected after end of measurement period should be dropped
+            if record["first_connected"] > self.endTS:
+                return False
+
+        if (record["status"]["name"] == "Disconnected") and (self.startTS is not None):     #Probes disconnected before start of measurement period should be dropped
+            if record["status"]["since"] < self.startTS:
+                return False
 
         probeASNv4 = record["asn_v4"]
         probeASNv6 = record["asn_v6"]
@@ -41,9 +56,8 @@ class ProbeDataConsumer():
                     asnCheckPassed = True
                     break
 
-
-
         probeCountry = record["country_code"]
+        probeAdmin1 = record["admin1"]
 
         countryCheckPassed = False
 
@@ -54,6 +68,15 @@ class ProbeDataConsumer():
                 if probeCountry == country:
                     countryCheckPassed = True
                     break
+
+                if not probeCountry:
+                    countryCheckPassed = True
+
+                if probeAdmin1:
+                    if country in probeAdmin1:
+                        countryCheckPassed = True
+
+
 
 
 
@@ -100,6 +123,7 @@ class ProbeDataConsumer():
 
             if self.isRelevant(record):
                 self.notifyObservers(record)
+
 
 """
 #EXAMPLE

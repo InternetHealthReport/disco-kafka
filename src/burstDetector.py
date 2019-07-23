@@ -1,3 +1,7 @@
+"""
+Performs kleinberg on event streams to report burst levels
+"""
+
 import numpy as np
 from pybursts import pybursts
 
@@ -28,7 +32,6 @@ class BurstDetector():
             probeASNv6 = probeDatum["asn_v6"]
 
             probeCountry = probeDatum["country_code"]
-
             probeAdmin1 = probeDatum["admin1"]
             probeAdmin2 = probeDatum["admin2"]
 
@@ -56,7 +59,7 @@ class BurstDetector():
             if probeAdmin2 not in self.numTotalProbes["ADMIN2"].keys():
                 self.numTotalProbes["ADMIN2"][probeAdmin2] = 1
             else:
-                self.numTotalProbes["ADMIN2"][probeAdmin2] += 1
+                self.numTotalProbes["ADMIN2"][probeAdmin2] += 1 
 
     def kleinberg(self,timeSeries,numOfProbes):
         timeSeries = np.array(timeSeries)
@@ -84,8 +87,18 @@ class BurstDetector():
 
         return timeSeries
 
+    def cleanBurstData(self,bursts,threshold):
+        cleaned = []
+        for datum in bursts:
+            score = datum[0]
 
-    def detect(self):
+            if score >= threshold:
+                cleaned.append(datum)
+
+        return cleaned
+
+
+    def detect(self,threshold=0):
         #ASN Streams
         burstsByASN = {}
 
@@ -98,8 +111,10 @@ class BurstDetector():
 
                 timeSeries = self.getTimeSeries(stream)
                 bursts = self.kleinberg(timeSeries,numTotalProbes)
+                bursts = self.cleanBurstData(bursts,threshold)
 
-                burstsByASN[asn] = bursts
+                if len(bursts) > 0:
+                    burstsByASN[asn] = bursts
             except Exception as e:
                 pass
 
@@ -114,8 +129,10 @@ class BurstDetector():
 
             timeSeries = self.getTimeSeries(stream)
             bursts = self.kleinberg(timeSeries,numTotalProbes)
+            bursts = self.cleanBurstData(bursts,threshold)
 
-            burstsByCountry[country] = bursts
+            if len(bursts) > 0:
+                burstsByCountry[country] = bursts
 
         #Admin1 Streams
         burstsByAdmin1 = {}
@@ -128,8 +145,10 @@ class BurstDetector():
 
             timeSeries = self.getTimeSeries(stream)
             bursts = self.kleinberg(timeSeries,numTotalProbes)
+            bursts = self.cleanBurstData(bursts,threshold)
 
-            burstsByAdmin1[admin1] = bursts
+            if len(bursts) > 0:
+                burstsByAdmin1[admin1] = bursts
 
         #Admin1 Streams
         burstsByAdmin2 = {}
@@ -142,8 +161,10 @@ class BurstDetector():
 
             timeSeries = self.getTimeSeries(stream)
             bursts = self.kleinberg(timeSeries,numTotalProbes)
+            bursts = self.cleanBurstData(bursts,threshold)
 
-            burstsByAdmin2[admin2] = bursts
+            if len(bursts) > 0:
+                burstsByAdmin2[admin2] = bursts
 
         return {"ASN":burstsByASN, "COUNTRY":burstsByCountry, "ADMIN1":burstsByAdmin1, "ADMIN2":burstsByAdmin2}
 

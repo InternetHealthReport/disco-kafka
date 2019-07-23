@@ -65,4 +65,4 @@ class EventProducer():
 
 
 #EXAMPLE
-EventProducer().startPeriod(1553385600,1553644800)
+EventProducer().startLive()

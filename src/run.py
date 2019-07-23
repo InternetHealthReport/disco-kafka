@@ -29,20 +29,28 @@ class Tester():
             self.eventData.append(data)
 
     def run(self):
+        start = 1553385600
+        end = 1553644800
+
         #Populate probe id's
-        probeCon = ProbeDataConsumer(countryFilters=["VE"])
+        probeCon = ProbeDataConsumer()
         probeCon.attach(self)
         probeCon.start()
 
         print("Num Probes: ",len(self.probeData))
 
-        timeStamp = 1553385600
+        from disco import Disco 
+        Disco(threshold=10,timeWindow=3600*24,probeData=self.probeData).start()
+
+
+        """
+        timeStamp = start
         windowToRead = 3600*24
         windowToSlide = 3600
         timesArray = []
         dataArray = []
 
-        while timeStamp < 1553644800:
+        while timeStamp < end:
             eventReader = EventConsumer(timeStamp,windowToRead)
             eventReader.attach(self)
             eventReader.start()
@@ -97,23 +105,27 @@ class Tester():
 
         maxScores = scoreDict.values()
         uniqueStartTimes = scoreDict.keys()
-        asDates = [datetime.fromtimestamp(x).strftime("%d-%b-%Y (%H:%M:%S)") for x in uniqueStartTimes]
-        print(asDates)
+        asDates = [datetime.utcfromtimestamp(x).strftime("%d-%b-%Y (%H:%M:%S)") for x in uniqueStartTimes]
+        
+        import pandas as pd
+        import matplotlib.dates as mdates
+
+        d = ({"A":asDates,"B":list(maxScores)})
+        df = pd.DataFrame(data=d)
+        df['A'] = pd.to_datetime(df['A'], format="%d-%b-%Y (%H:%M:%S)")
 
         fig, ax = plt.subplots()
-        ax.plot(asDates,maxScores, '-')
+        ax.step(df["A"].values, df["B"].values)
+        ax.set_xlim(df["A"].min(), df["A"].max())
 
-        print(len(uniqueStartTimes))
-        
-        print(len(asDates))
+        ax.xaxis.set_major_locator(mdates.MinuteLocator((0,30)))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b-%Y (%H:%M:%S)"))
 
-        ax.set_xticklabels(asDates, rotation=75)
+        plt.xticks(rotation=75)
+        plt.tight_layout()
         plt.show()
         
-        print("Done!")
-
-
-
+        print("Done!")"""
 
 
 tester = Tester("disconnect")

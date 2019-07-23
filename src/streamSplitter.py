@@ -1,3 +1,7 @@
+"""
+Splits events into separate streams based on ASN, Country or Finer Locality
+"""
+
 import time
 
 class StreamSplitter():
