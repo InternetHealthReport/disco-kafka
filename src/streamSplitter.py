@@ -64,7 +64,8 @@ class StreamSplitter():
                     self.admin1Streams[eventAdmin1].append(event)
             except Exception as e:
                 if e != "None":
-                    print("Error while splitting admin1: ",e)
+                    #print("Error while splitting admin1: ",e)
+                    pass
 
         if self.splitByAdmin2:
             try:

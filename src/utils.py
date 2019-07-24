@@ -5,6 +5,7 @@ Utility Functions
 import traceback
 import numpy as np
 from datetime import datetime
+from eventConsumer import EventConsumer
 import matplotlib.pyplot as plt
 
 def haversine(lon1, lat1, lon2, lat2):
@@ -80,3 +81,88 @@ def plotConnectedProbesGraph(eventData):
 
     plt.xticks(rotation=75)
     plt.show()
+
+def plotBursts(probeData,start,end,windowR,windowS):
+    #Needs minor fixing for eventData
+    timeStamp = start
+    windowToRead = 3600*24
+    windowToSlide = 3600
+    timesArray = []
+    dataArray = []
+
+    while timeStamp < end:
+        eventReader = EventConsumer(timeStamp,windowToRead)
+        eventReader.attach(self)
+        eventReader.start()
+
+        streamSplitter = StreamSplitter(probeData)
+        streams = streamSplitter.getStreams(eventData)
+
+        burstDetector = BurstDetector(streams,probeData,timeRange=windowToRead)
+        bursts = burstDetector.detect()
+
+        try:
+            bursts = bursts["COUNTRY"]["VE"]
+
+            for datum in bursts:
+                score = datum[0]
+                tsStart = datum[1]
+                tsEnd = datum[2]
+
+                theTimeStart = tsStart
+                theTimeEnd = tsEnd
+
+                dataArray.append(score)
+                timesArray.append(theTimeStart)
+
+                print(score,theTimeStart,theTimeEnd)
+        except:
+            pass
+
+        print("No of events: ",len(eventData))
+        print("-----")
+
+        eventData = []
+        del eventReader, streamSplitter, burstDetector
+
+        timeStamp += windowToSlide
+
+    maxScores = []
+    scoreDict = {}
+    for score, timeStart in zip(dataArray,timesArray):
+        if timeStart not in scoreDict.keys():
+            scoreDict[timeStart] = score
+        else:
+            oldScore = scoreDict[timeStart]
+
+            if score > oldScore:
+                scoreDict[timeStart] = score
+
+    import collections
+    scoreDict = collections.OrderedDict(sorted(scoreDict.items()))
+
+    print("Scores: ",scoreDict)
+
+    maxScores = scoreDict.values()
+    uniqueStartTimes = scoreDict.keys()
+    asDates = [datetime.utcfromtimestamp(x).strftime("%d-%b-%Y (%H:%M:%S)") for x in uniqueStartTimes]
+    
+    import pandas as pd
+    import matplotlib.dates as mdates
+
+    d = ({"A":asDates,"B":list(maxScores)})
+    df = pd.DataFrame(data=d)
+    df['A'] = pd.to_datetime(df['A'], format="%d-%b-%Y (%H:%M:%S)")
+
+    fig, ax = plt.subplots()
+    ax.step(df["A"].values, df["B"].values)
+    ax.set_xlim(df["A"].min(), df["A"].max())
+
+    ax.xaxis.set_major_locator(mdates.MinuteLocator((0,30)))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b-%Y (%H:%M:%S)"))
+
+    plt.xticks(rotation=75)
+    plt.tight_layout()
+    plt.show()
+    
+    print("Done!")

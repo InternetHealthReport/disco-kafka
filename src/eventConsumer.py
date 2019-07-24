@@ -55,8 +55,6 @@ class EventConsumer():
 
         theOffset = offsets[self.topicPartition].offset
 
-        print(theOffset)
-
         self.consumer.seek(self.topicPartition,theOffset)
         
         for message in self.consumer:

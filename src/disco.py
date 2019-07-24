@@ -8,6 +8,9 @@ from burstDetector import BurstDetector
 from kafka import KafkaProducer
 import msgpack
 
+import threading
+from probeTracker import ProbeTracker
+
 class Disco():
     def __init__(self,threshold,timeWindow,probeData):
         self.threshold = threshold
@@ -25,7 +28,7 @@ class Disco():
             value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
             batch_size=65536,linger_ms=4000,compression_type='gzip')
 
-        self.topicName = "ihr_disco_events"
+        self.topicName = "ihr_disco_burst"
 
     def initNumProbes(self):
         self.numTotalProbes["ASN"] = {}
@@ -67,6 +70,11 @@ class Disco():
             else:
                 self.numTotalProbes["ADMIN2"][probeAdmin2] += 1 
 
+    def trackDisconnectedProbes(self,streamType,streamName,startTime,disconnectedProbes):
+        tracker = ProbeTracker(streamType,streamName,startTime,disconnectedProbes)
+        tracker.start()
+        del tracker
+
     def eventDataProcessor(self,data):
         #get event probe
         eventProbeId = data["prb_id"]
@@ -82,15 +90,28 @@ class Disco():
         else:
             self.disconnectedProbes[streamName][probeId] = timeStamp
 
+    def cleanDisconnectedProbes(self,disconnectedProbes,outageTime,window):  #Gives the probes disconnected within the time window of burst starting time
+        startThreshold = outageTime - (window/2)
+        endThreshold = outageTime + (window/2)
+
+        cleanedDisconnectedProbes = {}
+
+        for probeId, timeStamp in disconnectedProbes.items():
+            if (timeStamp >= startThreshold) and (timeStamp <= endThreshold):
+                cleanedDisconnectedProbes[probeId] = timeStamp
+
+        return cleanedDisconnectedProbes
+
     def pushEventsToKafka(self,bursts):
         for streamType, burstByStream in bursts.items():
             for streamName, burstsArr in burstByStream.items():
-                disconnectedProbes = self.disconnectedProbes[streamName]
-                totalProbes = self.numTotalProbes[streamType][streamName]
-
                 burstEvent = burstsArr[0] #for now just pick first event
                 level = burstEvent[0]
                 startTime = burstEvent[1]
+
+                disconnectedProbes = self.disconnectedProbes[streamName]
+                disconnectedProbes = self.cleanDisconnectedProbes(disconnectedProbes,startTime,self.timeWindow)
+                totalProbes = self.numTotalProbes[streamType][streamName]
 
                 event = {}
                 event["streamtype"] = streamType
@@ -101,15 +122,12 @@ class Disco():
                 event["totalprobes"] = totalProbes
 
                 self.producer.send(self.topicName,event,timestamp_ms=int(startTime*1000))
-
-                print("Pushed an event:")
-                print(event)
-
+                threading.Thread(target=self.trackDisconnectedProbes, args=(streamType,streamName,startTime,disconnectedProbes)).start()
 
     def updateDisconnectedProbes(self,centralTimeStamp,eventData):
-        startThreshold = centralTimeStamp - self.timeWindow
+        startThreshold = centralTimeStamp - (2*self.timeWindow) 
 
-        #clear all data older than start time
+        #clear all data older than threshold
         idsToRemove = []
 
         for streamName, probesInStream in self.disconnectedProbes.items():
@@ -180,3 +198,9 @@ class Disco():
 
             self.eventData = []
             timeStamp += self.timeWindow
+
+"""
+#EXAMPLE 
+from disco import Disco 
+Disco(threshold=10,timeWindow=3600*24,probeData=self.probeData).start()
+"""

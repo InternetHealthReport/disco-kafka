@@ -18,7 +18,6 @@ class Tester():
         probeId = data["id"]
         self.probeData[probeId] = data
 
-
     def eventDataProcessor(self,data):
         #get event probe
         eventProbeId = data["prb_id"]
@@ -40,92 +39,7 @@ class Tester():
         print("Num Probes: ",len(self.probeData))
 
         from disco import Disco 
-        Disco(threshold=10,timeWindow=3600*24,probeData=self.probeData).start()
-
-
-        """
-        timeStamp = start
-        windowToRead = 3600*24
-        windowToSlide = 3600
-        timesArray = []
-        dataArray = []
-
-        while timeStamp < end:
-            eventReader = EventConsumer(timeStamp,windowToRead)
-            eventReader.attach(self)
-            eventReader.start()
-
-            streamSplitter = StreamSplitter(self.probeData)
-            streams = streamSplitter.getStreams(self.eventData)
-
-            burstDetector = BurstDetector(streams,self.probeData,timeRange=windowToRead)
-            bursts = burstDetector.detect()
-
-            try:
-                bursts = bursts["COUNTRY"]["VE"]
-
-                for datum in bursts:
-                    score = datum[0]
-                    tsStart = datum[1]
-                    tsEnd = datum[2]
-
-                    theTimeStart = tsStart
-                    theTimeEnd = tsEnd
-
-                    dataArray.append(score)
-                    timesArray.append(theTimeStart)
-
-                    print(score,theTimeStart,theTimeEnd)
-            except:
-                pass
-
-            print("No of events: ",len(self.eventData))
-            print("-----")
-
-            self.eventData = []
-            del eventReader, streamSplitter, burstDetector
-
-            timeStamp += windowToSlide
-
-        maxScores = []
-        scoreDict = {}
-        for score, timeStart in zip(dataArray,timesArray):
-            if timeStart not in scoreDict.keys():
-                scoreDict[timeStart] = score
-            else:
-                oldScore = scoreDict[timeStart]
-
-                if score > oldScore:
-                    scoreDict[timeStart] = score
-
-        import collections
-        scoreDict = collections.OrderedDict(sorted(scoreDict.items()))
-
-        print("Scores: ",scoreDict)
-
-        maxScores = scoreDict.values()
-        uniqueStartTimes = scoreDict.keys()
-        asDates = [datetime.utcfromtimestamp(x).strftime("%d-%b-%Y (%H:%M:%S)") for x in uniqueStartTimes]
-        
-        import pandas as pd
-        import matplotlib.dates as mdates
-
-        d = ({"A":asDates,"B":list(maxScores)})
-        df = pd.DataFrame(data=d)
-        df['A'] = pd.to_datetime(df['A'], format="%d-%b-%Y (%H:%M:%S)")
-
-        fig, ax = plt.subplots()
-        ax.step(df["A"].values, df["B"].values)
-        ax.set_xlim(df["A"].min(), df["A"].max())
-
-        ax.xaxis.set_major_locator(mdates.MinuteLocator((0,30)))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b-%Y (%H:%M:%S)"))
-
-        plt.xticks(rotation=75)
-        plt.tight_layout()
-        plt.show()
-        
-        print("Done!")"""
+        Disco(threshold=7,timeWindow=3600*6,probeData=self.probeData).start()
 
 
 tester = Tester("disconnect")
