@@ -73,13 +73,14 @@ def plotConnectedProbesGraph(eventData):
     df['A'] = pd.to_datetime(df['A'], format="%d-%b-%Y (%H:%M:%S)")
 
     fig, ax = plt.subplots()
-    ax.step(df["A"].values, df["B"].values)
+    ax.step(df["A"].values, df["B"].values,'r')
     ax.set_xlim(df["A"].min(), df["A"].max())
 
     ax.xaxis.set_major_locator(mdates.MinuteLocator((0,30)))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b-%Y (%H:%M:%S)"))
 
     plt.xticks(rotation=75)
+    plt.tight_layout()
     plt.show()
 
 def plotBursts(probeData,start,end,windowR,windowS):

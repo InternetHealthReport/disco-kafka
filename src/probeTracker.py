@@ -17,7 +17,7 @@ class ProbeTracker():
             value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
             batch_size=65536,linger_ms=4000,compression_type='gzip')
 
-        self.topicName = "ihr_disco_reconnect"
+        self.topicName = "ihr_disco_reconnect9"
 
         print("Tracker Started!~")
 
@@ -64,6 +64,8 @@ class ProbeTracker():
                 return
 
             timeStamp += timeWindow
+
+        self.producer.close()
 
 
 

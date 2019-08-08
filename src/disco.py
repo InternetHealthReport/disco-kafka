@@ -11,6 +11,8 @@ import msgpack
 import threading
 from probeTracker import ProbeTracker
 
+from concurrent.futures import ThreadPoolExecutor
+
 class Disco():
     def __init__(self,threshold,timeWindow,probeData):
         self.threshold = threshold
@@ -28,7 +30,11 @@ class Disco():
             value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
             batch_size=65536,linger_ms=4000,compression_type='gzip')
 
-        self.topicName = "ihr_disco_burst"
+        self.topicName = "ihr_disco_burst_l10"
+
+        self.executor = ThreadPoolExecutor(max_workers=10)
+
+        self.tasks = []
 
     def initNumProbes(self):
         self.numTotalProbes["ASN"] = {}
@@ -70,7 +76,11 @@ class Disco():
             else:
                 self.numTotalProbes["ADMIN2"][probeAdmin2] += 1 
 
-    def trackDisconnectedProbes(self,streamType,streamName,startTime,disconnectedProbes):
+    def trackDisconnectedProbes(self,args):
+        streamType = args[0]
+        streamName = args[1]
+        startTime = args[2]
+        disconnectedProbes = args[3]
         tracker = ProbeTracker(streamType,streamName,startTime,disconnectedProbes)
         tracker.start()
         del tracker
@@ -91,8 +101,8 @@ class Disco():
             self.disconnectedProbes[streamName][probeId] = timeStamp
 
     def cleanDisconnectedProbes(self,disconnectedProbes,outageTime,window):  #Gives the probes disconnected within the time window of burst starting time
-        startThreshold = outageTime - (window/2)
-        endThreshold = outageTime + (window/2)
+        startThreshold = outageTime - window
+        endThreshold = outageTime + window
 
         cleanedDisconnectedProbes = {}
 
@@ -109,23 +119,31 @@ class Disco():
                 level = burstEvent[0]
                 startTime = burstEvent[1]
 
-                disconnectedProbes = self.disconnectedProbes[streamName]
-                disconnectedProbes = self.cleanDisconnectedProbes(disconnectedProbes,startTime,self.timeWindow)
-                totalProbes = self.numTotalProbes[streamType][streamName]
+                try:
+                    disconnectedProbes = self.disconnectedProbes[streamName]
 
-                event = {}
-                event["streamtype"] = streamType
-                event["streamname"] = streamName
-                event["starttime"] = startTime
-                event["level"] = level
-                event["probelist"] = disconnectedProbes
-                event["totalprobes"] = totalProbes
+                    #disconnectedProbes = self.cleanDisconnectedProbes(disconnectedProbes,startTime,self.timeWindow)
+                    totalProbes = self.numTotalProbes[streamType][streamName]
 
-                self.producer.send(self.topicName,event,timestamp_ms=int(startTime*1000))
-                threading.Thread(target=self.trackDisconnectedProbes, args=(streamType,streamName,startTime,disconnectedProbes)).start()
+                    event = {}
+                    event["streamtype"] = streamType
+                    event["streamname"] = streamName
+                    event["starttime"] = startTime
+                    event["level"] = level
+                    event["probelist"] = disconnectedProbes
+                    event["totalprobes"] = totalProbes
+
+                    self.producer.send(self.topicName,event,timestamp_ms=int(startTime*1000))
+                    self.tasks.append(self.executor.submit(self.trackDisconnectedProbes,(streamType,streamName,startTime,disconnectedProbes)))
+                    #threading.Thread(target=self.trackDisconnectedProbes, args=(streamType,streamName,startTime,disconnectedProbes)).start()
+
+                except Exception as e:
+                    print("\n\n\n\n")
+                    print(e)
+                    print("\n\n\n\n")
 
     def updateDisconnectedProbes(self,centralTimeStamp,eventData):
-        startThreshold = centralTimeStamp - (2*self.timeWindow) 
+        startThreshold = centralTimeStamp - (3*self.timeWindow) 
 
         #clear all data older than threshold
         idsToRemove = []
@@ -180,8 +198,10 @@ class Disco():
         #timeStamp = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
 
         #try with test case
-        timeStamp = 1553385638
-        while True:
+        timeStamp = 1293840000
+        end = 1293840000 + (365*24*3600)
+        i = 0
+        while timeStamp < end:
             eventReader = EventConsumer(timeStamp,self.timeWindow)
             eventReader.attach(self)
             eventReader.start()
@@ -199,8 +219,16 @@ class Disco():
             self.eventData = []
             timeStamp += self.timeWindow
 
+            for task in self.tasks:
+                task.result()
+
+            i += 1
+            print("Year: ",int(i/365)+1,"Day: ",i%365)
+
+        print("Events end reached!")
+
 """
 #EXAMPLE 
 from disco import Disco 
-Disco(threshold=10,timeWindow=3600*24,probeData=self.probeData).start()
+Disco(threshold=7,timeWindow=3600*24,probeData=self.probeData).start()
 """

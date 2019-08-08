@@ -6,6 +6,9 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from kafka import KafkaConsumer
+import msgpack
+
 
 class Tester():
     def __init__(self,eventType):
@@ -28,19 +31,125 @@ class Tester():
             self.eventData.append(data)
 
     def run(self):
-        start = 1553385600
-        end = 1553644800
+        start = 1407890229 - (3600*24)
+        end = 1407892270 + (3600*24)
 
         #Populate probe id's
-        probeCon = ProbeDataConsumer()
+        probeCon = ProbeDataConsumer(countryFilters=["SC"])
         probeCon.attach(self)
         probeCon.start()
 
         print("Num Probes: ",len(self.probeData))
 
-        from disco import Disco 
-        Disco(threshold=7,timeWindow=3600*6,probeData=self.probeData).start()
+        self.plotBursts(self.probeData,start,end,3600*24,3600,"COUNTRY","SC")
 
+
+        """
+        from disco import Disco 
+        Disco(threshold=10,timeWindow=3600*24,probeData=self.probeData).start()"""
+
+        """
+        self.topicName = "ihr_disco_burst3"
+
+        consumer = KafkaConsumer(self.topicName,auto_offset_reset="earliest",bootstrap_servers=['localhost:9092'],consumer_timeout_ms=1000,value_deserializer=lambda v: msgpack.unpackb(v, raw=False))
+
+        data = []
+        for message in consumer:
+            theMessage = message.value
+            noOfProbes = len(theMessage["probelist"])
+            data.append(noOfProbes)
+
+        print(min(data))
+        plt.hist(data,max(data))
+        plt.show()"""
+
+    def plotBursts(self,probeData,start,end,windowR,windowS,streamType,streamName):
+        timeStamp = start
+        windowToRead = 3600*24
+        windowToSlide = 3600
+        timesArray = []
+        dataArray = []
+
+        while timeStamp < end:
+            eventReader = EventConsumer(timeStamp,windowToRead)
+            eventReader.attach(self)
+            eventReader.start()
+
+            streamSplitter = StreamSplitter(probeData)
+            streams = streamSplitter.getStreams(self.eventData)
+
+            burstDetector = BurstDetector(streams,probeData,timeRange=windowToRead)
+            bursts = burstDetector.detect()
+
+            try:
+                bursts = bursts[streamType][streamName]
+
+                for datum in bursts:
+                    score = datum[0]
+                    tsStart = datum[1]
+                    tsEnd = datum[2]
+
+                    theTimeStart = tsStart
+                    theTimeEnd = tsEnd
+
+                    dataArray.append(score)
+                    timesArray.append(theTimeStart)
+
+                    print(score,theTimeStart,theTimeEnd)
+            except:
+                dataArray.append(0)
+                timesArray.append(float(timeStamp))
+
+                print(0,timeStamp)
+
+            print("No of events: ",len(self.eventData))
+            print("-----")
+
+            self.eventData = []
+            del eventReader, streamSplitter, burstDetector
+
+            timeStamp += windowToSlide
+
+        maxScores = []
+        scoreDict = {}
+        for score, timeStart in zip(dataArray,timesArray):
+            if timeStart not in scoreDict.keys():
+                scoreDict[timeStart] = score
+            else:
+                oldScore = scoreDict[timeStart]
+
+                if score > oldScore:
+                    scoreDict[timeStart] = score
+
+        import collections
+        scoreDict = collections.OrderedDict(sorted(scoreDict.items()))
+
+        print("Scores: ",scoreDict)
+
+        maxScores = scoreDict.values()
+        uniqueStartTimes = scoreDict.keys()
+        asDates = [datetime.utcfromtimestamp(x).strftime("%d-%b-%Y (%H:%M:%S)") for x in uniqueStartTimes]
+        
+        import pandas as pd
+        import matplotlib.dates as mdates
+
+        d = ({"A":asDates,"B":[0]+list(maxScores)[:-1]})
+        print(d)
+        df = pd.DataFrame(data=d)
+        df['A'] = pd.to_datetime(df['A'], format="%d-%b-%Y (%H:%M:%S)")
+
+        fig, ax = plt.subplots()
+        ax.step(df["A"].values, df["B"].values, 'g')
+        ax.set_xlim(df["A"].min(), df["A"].max())
+
+        ax.xaxis.set_major_locator(mdates.MinuteLocator((0,30)))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b-%Y (%H:%M:%S)"))
+
+        plt.xticks(rotation=75)
+        plt.tight_layout()
+        plt.show()
+        
+        print("Done!")
 
 tester = Tester("disconnect")
 tester.run()

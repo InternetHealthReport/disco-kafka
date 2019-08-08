@@ -61,8 +61,19 @@ class EventProducer():
         else:
             print("Fetch Failed!")
 
+    def startBigPeriod(self,startTS,endTS):
+        timeStamp = startTS
+        window = 3600*24*3
+
+        while timeStamp < endTS:
+            self.startPeriod(timeStamp,timeStamp+window)
+            timeStamp += window
 
 
 
+import time
+start_time = time.time()
 #EXAMPLE
-EventProducer().startLive()
+EventProducer().startBigPeriod(1466898669,1483228800)
+elapsed_time = time.time() - start_time
+print(elapsed_time)
