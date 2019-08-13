@@ -73,7 +73,7 @@ def plotConnectedProbesGraph(eventData):
     df['A'] = pd.to_datetime(df['A'], format="%d-%b-%Y (%H:%M:%S)")
 
     fig, ax = plt.subplots()
-    ax.step(df["A"].values, df["B"].values,'r')
+    ax.step(df["A"].values, df["B"].values,'b')
     ax.set_xlim(df["A"].min(), df["A"].max())
 
     ax.xaxis.set_major_locator(mdates.MinuteLocator((0,30)))

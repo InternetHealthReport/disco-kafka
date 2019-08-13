@@ -7,6 +7,7 @@ from streamSplitter import StreamSplitter
 from burstDetector import BurstDetector
 from kafka import KafkaProducer
 import msgpack
+from datetime import datetime
 
 import threading
 from probeTracker import ProbeTracker
@@ -14,8 +15,11 @@ from probeTracker import ProbeTracker
 from concurrent.futures import ThreadPoolExecutor
 
 class Disco():
-    def __init__(self,threshold,timeWindow,probeData):
+    def __init__(self,threshold,startTime,endTime,timeWindow,probeData):
         self.threshold = threshold
+
+        self.startTime = startTime
+        self.endTime = endTime
         self.timeWindow = timeWindow
 
         self.probeData = probeData
@@ -30,11 +34,9 @@ class Disco():
             value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
             batch_size=65536,linger_ms=4000,compression_type='gzip')
 
-        self.topicName = "ihr_disco_burst_l10"
+        self.topicName = "ihr_disco_burst"
 
         self.executor = ThreadPoolExecutor(max_workers=10)
-
-        self.tasks = []
 
     def initNumProbes(self):
         self.numTotalProbes["ASN"] = {}
@@ -134,12 +136,11 @@ class Disco():
                     event["totalprobes"] = totalProbes
 
                     self.producer.send(self.topicName,event,timestamp_ms=int(startTime*1000))
-                    self.tasks.append(self.executor.submit(self.trackDisconnectedProbes,(streamType,streamName,startTime,disconnectedProbes)))
-                    #threading.Thread(target=self.trackDisconnectedProbes, args=(streamType,streamName,startTime,disconnectedProbes)).start()
+                    self.executor.submit(self.trackDisconnectedProbes,(streamType,streamName,startTime,disconnectedProbes))
 
                 except Exception as e:
                     print("\n\n\n\n")
-                    print(e)
+                    print("Exception: ",e)
                     print("\n\n\n\n")
 
     def updateDisconnectedProbes(self,centralTimeStamp,eventData):
@@ -195,18 +196,17 @@ class Disco():
                 self.addDisconnectedProbe(probeAdmin2,probeId,timeStamp)
 
     def start(self):
-        #timeStamp = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
+        if self.startTime is None:
+            startTime = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
+        else:
+            startTime = self.startTime
 
-        #try with test case
-        timeStamp = 1293840000
-        end = 1293840000 + (365*24*3600)
-        i = 0
-        while timeStamp < end:
-            eventReader = EventConsumer(timeStamp,self.timeWindow)
+        while True:
+            eventReader = EventConsumer(startTime,self.timeWindow)
             eventReader.attach(self)
             eventReader.start()
 
-            self.updateDisconnectedProbes(timeStamp,self.eventData)
+            self.updateDisconnectedProbes(startTime,self.eventData)
 
             streamSplitter = StreamSplitter(self.probeData)
             streams = streamSplitter.getStreams(self.eventData)
@@ -217,15 +217,14 @@ class Disco():
             self.pushEventsToKafka(bursts)
 
             self.eventData = []
-            timeStamp += self.timeWindow
+            startTime += self.timeWindow
 
-            for task in self.tasks:
-                task.result()
+            if self.endTime is not None:
+                if startTime > self.endTime:
+                    break
 
-            i += 1
-            print("Year: ",int(i/365)+1,"Day: ",i%365)
+        print("End reached!")
 
-        print("Events end reached!")
 
 """
 #EXAMPLE 

@@ -1,188 +1,89 @@
-from eventConsumer import EventConsumer
+import sys
+import argparse
 from probeDataConsumer import ProbeDataConsumer
-from streamSplitter import StreamSplitter
-from burstDetector import BurstDetector
 from datetime import datetime
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-from kafka import KafkaConsumer
-import msgpack
+from disco import Disco 
 
-
-class Tester():
-    def __init__(self,eventType):
-        self.eventType = eventType
-
+class Runner():
+    def __init__(self,threshold,startTime,endTime,timeWindow,countryFilters,asnFilters,proximityFilters):
         self.probeData = {}
-        self.eventData = []
+
+        self.threshold = threshold
+        self.startTime = startTime
+        self.endTime = endTime
+        self.timeWindow = timeWindow
+        self.countryFilters = countryFilters
+        self.asnFilters = asnFilters
+        self.proximityFilters = proximityFilters
 
     def probeDataProcessor(self,data):
         probeId = data["id"]
         self.probeData[probeId] = data
 
-    def eventDataProcessor(self,data):
-        #get event probe
-        eventProbeId = data["prb_id"]
-        eventType = data["event"]
-
-        #see if it is relevant
-        if (eventType == self.eventType) and (eventProbeId in self.probeData.keys()):
-            self.eventData.append(data)
-
     def run(self):
-        start = 1407890229 - (3600*24)
-        end = 1407892270 + (3600*24)
-
         #Populate probe id's
-        probeCon = ProbeDataConsumer(countryFilters=["SC"])
+        probeCon = ProbeDataConsumer(countryFilters=self.countryFilters,asnFilters=self.asnFilters,proximityFilters=self.proximityFilters)
         probeCon.attach(self)
         probeCon.start()
 
-        print("Num Probes: ",len(self.probeData))
+        print(len(self.probeData))
 
-        self.plotBursts(self.probeData,start,end,3600*24,3600,"COUNTRY","SC")
-
-
-        """
-        from disco import Disco 
-        Disco(threshold=10,timeWindow=3600*24,probeData=self.probeData).start()"""
-
-        """
-        self.topicName = "ihr_disco_burst3"
-
-        consumer = KafkaConsumer(self.topicName,auto_offset_reset="earliest",bootstrap_servers=['localhost:9092'],consumer_timeout_ms=1000,value_deserializer=lambda v: msgpack.unpackb(v, raw=False))
-
-        data = []
-        for message in consumer:
-            theMessage = message.value
-            noOfProbes = len(theMessage["probelist"])
-            data.append(noOfProbes)
-
-        print(min(data))
-        plt.hist(data,max(data))
-        plt.show()"""
-
-    def plotBursts(self,probeData,start,end,windowR,windowS,streamType,streamName):
-        timeStamp = start
-        windowToRead = 3600*24
-        windowToSlide = 3600
-        timesArray = []
-        dataArray = []
-
-        while timeStamp < end:
-            eventReader = EventConsumer(timeStamp,windowToRead)
-            eventReader.attach(self)
-            eventReader.start()
-
-            streamSplitter = StreamSplitter(probeData)
-            streams = streamSplitter.getStreams(self.eventData)
-
-            burstDetector = BurstDetector(streams,probeData,timeRange=windowToRead)
-            bursts = burstDetector.detect()
-
-            try:
-                bursts = bursts[streamType][streamName]
-
-                for datum in bursts:
-                    score = datum[0]
-                    tsStart = datum[1]
-                    tsEnd = datum[2]
-
-                    theTimeStart = tsStart
-                    theTimeEnd = tsEnd
-
-                    dataArray.append(score)
-                    timesArray.append(theTimeStart)
-
-                    print(score,theTimeStart,theTimeEnd)
-            except:
-                dataArray.append(0)
-                timesArray.append(float(timeStamp))
-
-                print(0,timeStamp)
-
-            print("No of events: ",len(self.eventData))
-            print("-----")
-
-            self.eventData = []
-            del eventReader, streamSplitter, burstDetector
-
-            timeStamp += windowToSlide
-
-        maxScores = []
-        scoreDict = {}
-        for score, timeStart in zip(dataArray,timesArray):
-            if timeStart not in scoreDict.keys():
-                scoreDict[timeStart] = score
-            else:
-                oldScore = scoreDict[timeStart]
-
-                if score > oldScore:
-                    scoreDict[timeStart] = score
-
-        import collections
-        scoreDict = collections.OrderedDict(sorted(scoreDict.items()))
-
-        print("Scores: ",scoreDict)
-
-        maxScores = scoreDict.values()
-        uniqueStartTimes = scoreDict.keys()
-        asDates = [datetime.utcfromtimestamp(x).strftime("%d-%b-%Y (%H:%M:%S)") for x in uniqueStartTimes]
-        
-        import pandas as pd
-        import matplotlib.dates as mdates
-
-        d = ({"A":asDates,"B":[0]+list(maxScores)[:-1]})
-        print(d)
-        df = pd.DataFrame(data=d)
-        df['A'] = pd.to_datetime(df['A'], format="%d-%b-%Y (%H:%M:%S)")
-
-        fig, ax = plt.subplots()
-        ax.step(df["A"].values, df["B"].values, 'g')
-        ax.set_xlim(df["A"].min(), df["A"].max())
-
-        ax.xaxis.set_major_locator(mdates.MinuteLocator((0,30)))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b-%Y (%H:%M:%S)"))
-
-        plt.xticks(rotation=75)
-        plt.tight_layout()
-        plt.show()
-        
-        print("Done!")
-
-tester = Tester("disconnect")
-tester.run()
+        Disco(threshold=self.threshold,startTime=self.startTime,endTime=self.endTime,timeWindow=self.timeWindow,probeData=self.probeData).start()
 
 
-"""
-from kafka.admin import KafkaAdminClient, ConfigResource, ConfigResourceType
 
-admin = KafkaAdminClient()
-admin.alter_configs([ConfigResource(ConfigResourceType.TOPIC,"ihr_atlas_probe_archive",{"retention.ms":1,"cleanup.policy":"compact"})])
-desc = admin.describe_configs([ConfigResource(ConfigResourceType.TOPIC,"ihr_atlas_probe_archive")])
-print(desc)
-"""
+if __name__ == '__main__':
 
-"""
-import reverse_geocoder as rg
+    text = "Internet outage detection with RIPE Atlas disconnections"
 
-coordinates = (51.5214588,-0.1729636),(9.936033, 76.259952),(37.38605,-122.08385)
-results = rg.search(coordinates) # default mode = 2
-print(results)
-"""
+    parser = argparse.ArgumentParser(description = text)  
+    parser.add_argument("--threshold","-t",help="Choose burst threshold level")
+    parser.add_argument("--startTime","-s",help="Choose start time (Format: Y-m-dTH:M:S; Example: 2017-11-06T16:00:00)")
+    parser.add_argument("--endTime","-e",help="Choose end time (Format: Y-m-dTH:M:S; Example: 2017-11-06T16:00:00)")
+    parser.add_argument("--timeWindow","-w",help="Choose a time window in seconds to read disco events (Example: 3600)")
+    parser.add_argument("--countryFilters","-c",help='Give a list of countries to focus on (Example: ["AT","PK"])')
+    parser.add_argument("--asnFilters","-a",help='Give a list of ASNs to focus on (Example: [57169,373])')
+    parser.add_argument("--proximityFilters","-p",help='Give a list of lat,long pairs (Example: [[16.4375,47.3695],[15.4375,47.3695]])')
 
-"""
-from geopy.geocoders import Nominatim
+    args = parser.parse_args() 
 
-geolocator = Nominatim(user_agent="specify_your_app_name_here")
-probeCity = geolocator.reverse("6.1285, 45.9005")
-print(probeCity.raw)
-"""
+    if args.threshold:
+        threshold = int(args.threshold)
+    else:
+        sys.exit("Error: Threshold not specified; for a list of args, type python3 run.py -h")
 
-"""
-from googlegeocoder import GoogleGeocoder
-geocoder = GoogleGeocoder("AIzaSyAAKBQMoxN-O0Zv_oO7N7y89b2SQESmkLo")
-reverse = geocoder.get((33.9395164, -118.2414404))
-print(reverse)
-"""
+    if args.startTime:
+        startTime = datetime.strptime(args.startTime+"UTC", "%Y-%m-%dT%H:%M:%S%Z")
+        startTime = int((startTime - datetime(1970, 1, 1)).total_seconds())
+    else:
+        startTime = None
+
+    if args.endTime:
+        endTime = datetime.strptime(args.endTime+"UTC", "%Y-%m-%dT%H:%M:%S%Z")
+        endTime = int((endTime - datetime(1970, 1, 1)).total_seconds())
+    else:
+        endTime = None
+
+    if args.timeWindow:
+        timeWindow = int(args.timeWindow)
+    else:
+        timeWindow = 3600*24
+
+    if args.countryFilters:
+        countryFilters = list(args.countryFilters)
+    else:
+        countryFilters = []
+
+    if args.asnFilters:
+        asnFilters = eval(args.asnFilters)
+    else:
+        asnFilters = []
+
+    if args.proximityFilters:
+        proximityFilters = eval(args.proximityFilters)
+    else:
+        proximityFilters = []
+
+
+    Runner(threshold,startTime,endTime,timeWindow,countryFilters,asnFilters,proximityFilters).run()
+
