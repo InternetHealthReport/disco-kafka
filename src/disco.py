@@ -22,6 +22,8 @@ class Disco():
         self.endTime = endTime
         self.timeWindow = timeWindow
 
+        self.slideWindow = 3600
+
         self.probeData = probeData
         self.eventData = []
 
@@ -103,8 +105,8 @@ class Disco():
             self.disconnectedProbes[streamName][probeId] = timeStamp
 
     def cleanDisconnectedProbes(self,disconnectedProbes,outageTime,window):  #Gives the probes disconnected within the time window of burst starting time
-        startThreshold = outageTime - window
-        endThreshold = outageTime + window
+        startThreshold = outageTime - (window)
+        endThreshold = outageTime + (window)
 
         cleanedDisconnectedProbes = {}
 
@@ -117,31 +119,31 @@ class Disco():
     def pushEventsToKafka(self,bursts):
         for streamType, burstByStream in bursts.items():
             for streamName, burstsArr in burstByStream.items():
-                burstEvent = burstsArr[0] #for now just pick first event
-                level = burstEvent[0]
-                startTime = burstEvent[1]
+                for burstEvent in burstsArr:
+                    level = burstEvent[0]
+                    startTime = burstEvent[1]
 
-                try:
-                    disconnectedProbes = self.disconnectedProbes[streamName]
+                    try:
+                        disconnectedProbes = self.disconnectedProbes[streamName]
+                        disconnectedProbes = self.cleanDisconnectedProbes(disconnectedProbes,startTime,self.slideWindow)
+                        
+                        totalProbes = self.numTotalProbes[streamType][streamName]
 
-                    #disconnectedProbes = self.cleanDisconnectedProbes(disconnectedProbes,startTime,self.timeWindow)
-                    totalProbes = self.numTotalProbes[streamType][streamName]
+                        event = {}
+                        event["streamtype"] = streamType
+                        event["streamname"] = streamName
+                        event["starttime"] = startTime
+                        event["level"] = level
+                        event["probelist"] = disconnectedProbes
+                        event["totalprobes"] = totalProbes
 
-                    event = {}
-                    event["streamtype"] = streamType
-                    event["streamname"] = streamName
-                    event["starttime"] = startTime
-                    event["level"] = level
-                    event["probelist"] = disconnectedProbes
-                    event["totalprobes"] = totalProbes
+                        self.producer.send(self.topicName,event,timestamp_ms=int(startTime*1000))
+                        self.executor.submit(self.trackDisconnectedProbes,(streamType,streamName,startTime,disconnectedProbes))
 
-                    self.producer.send(self.topicName,event,timestamp_ms=int(startTime*1000))
-                    self.executor.submit(self.trackDisconnectedProbes,(streamType,streamName,startTime,disconnectedProbes))
-
-                except Exception as e:
-                    print("\n\n\n\n")
-                    print("Exception: ",e)
-                    print("\n\n\n\n")
+                    except Exception as e:
+                        print("\n\n\n\n")
+                        print("Exception: ",e)
+                        print("\n\n\n\n")
 
     def updateDisconnectedProbes(self,centralTimeStamp,eventData):
         startThreshold = centralTimeStamp - (3*self.timeWindow) 
@@ -195,7 +197,59 @@ class Disco():
             if probeAdmin2 is not None:
                 self.addDisconnectedProbe(probeAdmin2,probeId,timeStamp)
 
+    def fallsWithin(self, timeStamp, periods):
+        for period in periods:
+            start = period[0]
+            end = period[1]
+
+            if (timeStamp >= start) and (timeStamp <= end):
+                return True
+        
+        return False
+
+    def cleanEvents(self,bursts,lastProcessedTimeStamp):
+        toDelete = []
+
+        for streamType, burstByStream in bursts.items():
+            for streamName, burstsArr in burstByStream.items():
+                i = 0
+                indicesToDelete = []
+                seenPeriods = []
+                for burstEvent in burstsArr:
+                    level = burstEvent[0]
+                    startTime = burstEvent[1]
+                    endTime = burstEvent[2]
+
+                    if (startTime < lastProcessedTimeStamp) or self.fallsWithin(startTime,seenPeriods):
+                        indicesToDelete.append(i)
+                    else:
+                        seenPeriods.append((startTime,endTime))
+
+
+                    i += 1
+
+                if len(indicesToDelete) != 0:
+                    toDelete.append((streamType,streamName,indicesToDelete))
+                
+
+        for item in toDelete:
+            streamType = item[0]
+            streamName = item[1]
+            indicesToDelete = item[2]
+            indicesToDelete.reverse()
+
+            for index in indicesToDelete:
+                del bursts[streamType][streamName][index]
+
+            if len(bursts[streamType][streamName]) == 0:
+                del bursts[streamType][streamName]
+
+        return bursts
+
+
     def start(self):
+        lastProcessedTimeStamp = 0
+
         if self.startTime is None:
             startTime = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
         else:
@@ -213,11 +267,16 @@ class Disco():
 
             burstDetector = BurstDetector(streams,self.probeData,timeRange=self.timeWindow)
             bursts = burstDetector.detect(threshold=self.threshold)
+            bursts = self.cleanEvents(bursts,lastProcessedTimeStamp)
 
             self.pushEventsToKafka(bursts)
 
             self.eventData = []
-            startTime += self.timeWindow
+
+            lastProcessedTimeStamp = startTime + self.timeWindow
+            startTime += self.slideWindow
+
+            print(startTime)
 
             if self.endTime is not None:
                 if startTime > self.endTime:

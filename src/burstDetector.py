@@ -19,7 +19,7 @@ class BurstDetector():
 
         self.timeRange = timeRange
 
-        self.minProbes = 5
+        self.minProbes = 10
 
     def initNumProbes(self):
         self.numTotalProbes["ASN"] = {}
