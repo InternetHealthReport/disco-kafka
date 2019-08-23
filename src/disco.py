@@ -105,8 +105,8 @@ class Disco():
             self.disconnectedProbes[streamName][probeId] = timeStamp
 
     def cleanDisconnectedProbes(self,disconnectedProbes,outageTime,window):  #Gives the probes disconnected within the time window of burst starting time
-        startThreshold = outageTime - (window)
-        endThreshold = outageTime + (window)
+        startThreshold = outageTime - (window/4)
+        endThreshold = outageTime + (window/4)
 
         cleanedDisconnectedProbes = {}
 
@@ -207,9 +207,21 @@ class Disco():
         
         return False
 
+    def getPeriod(self, timeStamp, periods):
+        for period in periods:
+            start = period[0]
+            end = period[1]
+
+            if (timeStamp >= start) and (timeStamp <= end):
+                return period
+        
+        return (None,None)
+
     def cleanEvents(self,bursts,lastProcessedTimeStamp):
         toDelete = []
+        burstLevelsAgainstPeriods = {}
 
+        #Find redundant events
         for streamType, burstByStream in bursts.items():
             for streamName, burstsArr in burstByStream.items():
                 i = 0
@@ -222,8 +234,13 @@ class Disco():
 
                     if (startTime < lastProcessedTimeStamp) or self.fallsWithin(startTime,seenPeriods):
                         indicesToDelete.append(i)
+
+                        if self.fallsWithin(startTime,seenPeriods):
+                            period = self.getPeriod(startTime,seenPeriods)
+                            burstLevelsAgainstPeriods[period].append(level)
                     else:
                         seenPeriods.append((startTime,endTime))
+                        burstLevelsAgainstPeriods[(startTime,endTime)] = [level]
 
 
                     i += 1
@@ -232,6 +249,7 @@ class Disco():
                     toDelete.append((streamType,streamName,indicesToDelete))
                 
 
+        #Delete redundant events
         for item in toDelete:
             streamType = item[0]
             streamName = item[1]
@@ -244,7 +262,22 @@ class Disco():
             if len(bursts[streamType][streamName]) == 0:
                 del bursts[streamType][streamName]
 
+        #Save only the highest burst level against each event
+        for streamType, burstByStream in bursts.items():
+            for streamName, burstsArr in burstByStream.items():
+                for burstEvent in burstsArr:
+                    burstPeriod = (burstEvent[1],burstEvent[2])
+
+                    highestLevel = max(burstLevelsAgainstPeriods[burstPeriod])
+
+                    burstEvent[0] = highestLevel
+
+
+
         return bursts
+
+    def asDate(self,timestamp):
+        return datetime.utcfromtimestamp(timestamp).strftime("%d-%b-%Y (%H:%M:%S)")
 
 
     def start(self):
@@ -276,7 +309,7 @@ class Disco():
             lastProcessedTimeStamp = startTime + self.timeWindow
             startTime += self.slideWindow
 
-            print(startTime)
+            print("Processed till ",self.asDate(startTime))
 
             if self.endTime is not None:
                 if startTime > self.endTime:
