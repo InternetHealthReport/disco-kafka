@@ -15,7 +15,7 @@ from kafka.structs import TopicPartition, OffsetAndTimestamp
 
 class EventConsumer():
     def __init__(self,startTS,windowInSeconds):
-        self.topicName = "ihr_atlas_live"
+        self.topicName = "ihr_atlas_probe_discolog"
         self.startTS = startTS
 
         self.consumer = KafkaConsumer(auto_offset_reset="earliest",bootstrap_servers=['localhost:9092'],consumer_timeout_ms=1000,value_deserializer=lambda v: msgpack.unpackb(v, raw=False))

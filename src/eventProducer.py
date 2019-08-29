@@ -11,21 +11,21 @@ import msgpack
 
 class EventProducer():
     def __init__(self):
-        self.producer = KafkaProducer(bootstrap_servers='localhost:9092', acks=0,
+        self.producer = KafkaProducer(bootstrap_servers='localhost:9092',
             value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
-            batch_size=65536,linger_ms=4000,compression_type='gzip')
+            compression_type='snappy')
 
-        self.topicName = "ihr_atlas_live"
+        self.topicName = "ihr_atlas_probe_discolog"
 
     def startLive(self):
-        WINDOW = 60
+        WINDOW = 5*60
         currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
         while True:
             try:
                 kwargs = {
                     "msm_id": 7000,
-                    "start": datetime.utcfromtimestamp(currentTS-WINDOW),
-                    "stop": datetime.utcfromtimestamp(currentTS),
+                    "start": datetime.utcfromtimestamp(currentTS-2*WINDOW),
+                    "stop": datetime.utcfromtimestamp(currentTS-WINDOW),
                 }
 
                 is_success, results = AtlasResultsRequest(**kwargs).create()
