@@ -74,6 +74,7 @@ class EventProducer():
 import time
 start_time = time.time()
 #EXAMPLE
-EventProducer().startBigPeriod(1466898669,1483228800)
+#EventProducer().startBigPeriod(1466898669,1483228800)
+EventProducer().startLive()
 elapsed_time = time.time() - start_time
 print(elapsed_time)

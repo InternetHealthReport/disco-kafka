@@ -60,15 +60,15 @@ class ProbeDataProducer():
 
 
     def start(self):
-        """
         link = "https://atlas.ripe.net/api/v2/probes/archive?day="+self.date
 
         data = requests.get(link).json()
         """
-
+        # Use this for loading probe information from a local file
         with open("../data/probeArchives/2016-12-12.json") as myFile:
             data = json.loads(myFile.read())
     
+        """
 
         filename = data["source_filename"]
         timestamp = data["snapshot_datetime"]
@@ -94,6 +94,8 @@ class ProbeDataProducer():
 
 
 #EXAMPLE
-ProbeDataProducer().start()
+pdp = ProbeDataProducer()
+pdp.adjustConfig()
+pdp.start()
 
 
