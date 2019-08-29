@@ -7,6 +7,7 @@ To start disco in live mode, you just have to specify the burst level threshold 
 ```
 $ python3.7 src/run.py -t 7
 ```
+We can change the time window over which the burst detection is computed with the --timeWindow option.
 
 #### Running for a time period
 Optionally, you can give start (**-s**) and end times (**-e**)
