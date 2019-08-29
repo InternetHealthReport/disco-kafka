@@ -1,12 +1,18 @@
 # Disco-Kafka
 Internet outage detection with RIPE Atlas disconnections
 
+## Requirements
+- reverse_geocoder
+- pybursts (https://github.com/romain-fontugne/pybursts)
+- cousteau (https://RIPE-NCC/ripe-atlas-cousteau)
+
 ## Usage
 #### Running in Live mode
 To start disco in live mode, you just have to specify the burst level threshold (**-t**).
 ```
 $ python3.7 src/run.py -t 7
 ```
+We can change the time window over which the burst detection is computed with the --timeWindow option.
 
 #### Running for a time period
 Optionally, you can give start (**-s**) and end times (**-e**)
