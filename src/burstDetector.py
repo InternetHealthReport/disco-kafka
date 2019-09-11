@@ -4,6 +4,7 @@ Performs kleinberg on event streams to report burst levels
 
 import numpy as np
 from pybursts import pybursts
+import logging
 
 class BurstDetector():
     def __init__(self,streams,probeData,timeRange):
@@ -103,20 +104,17 @@ class BurstDetector():
         burstsByASN = {}
 
         for asn, stream in self.asnStreams.items():
-            try:
-                numTotalProbes = self.numTotalProbes["ASN"][asn]
+            numTotalProbes = self.numTotalProbes["ASN"].get(asn, 0)
 
-                if numTotalProbes < self.minProbes:
-                    continue
+            if numTotalProbes < self.minProbes:
+                continue
 
-                timeSeries = self.getTimeSeries(stream)
-                bursts = self.kleinberg(timeSeries,numTotalProbes)
-                bursts = self.cleanBurstData(bursts,threshold)
+            timeSeries = self.getTimeSeries(stream)
+            bursts = self.kleinberg(timeSeries,numTotalProbes)
+            bursts = self.cleanBurstData(bursts,threshold)
 
-                if len(bursts) > 0:
-                    burstsByASN[asn] = bursts
-            except Exception as e:
-                pass
+            if len(bursts) > 0:
+                burstsByASN[asn] = bursts
 
         #Country Streams
         burstsByCountry = {}

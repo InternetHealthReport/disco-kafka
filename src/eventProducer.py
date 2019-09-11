@@ -2,20 +2,38 @@
 Pushes Atlas Live Events to Kafka indefinitely
 """
 
+import sys
+from kafka.admin import KafkaAdminClient, NewTopic
 from kafka import KafkaProducer
 from datetime import datetime
 import time
 import json
 from ripe.atlas.cousteau import AtlasResultsRequest
 import msgpack
+import argparse
+import arrow
+import logging
 
 class EventProducer():
-    def __init__(self):
+    def __init__(self, topicName):
+        admin_client = KafkaAdminClient(
+                bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
+                client_id='disco_eventproducer_admin')
+
+        try:
+            topic_list = [NewTopic(name=topicName, num_partitions=1, replication_factor=2, topic_configs={'retention.ms':30758400000})]
+            admin_client.create_topics(new_topics=topic_list, validate_only=False)
+        except Exception as e:
+            logging.warning(str(e))
+            pass
+        finally:
+            admin_client.close()
+
         self.producer = KafkaProducer(bootstrap_servers='localhost:9092',
             value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
             compression_type='snappy')
 
-        self.topicName = "ihr_atlas_probe_discolog"
+        self.topicName = topicName
 
     def startLive(self):
         WINDOW = 5*60
@@ -36,7 +54,7 @@ class EventProducer():
                         self.producer.send(self.topicName,ent,timestamp_ms=timestamp)
                         print("Record pushed")
                 else:
-                    print("Fetch Failed!")
+                    print("Fetch Failed! {}".format(kwargs))
 
                 time.sleep(WINDOW)
                 currentTS += (WINDOW + 1)
@@ -57,9 +75,8 @@ class EventProducer():
                 timestamp = ent["timestamp"]
                 timestamp = timestamp*1000      #convert to milliseconds
                 self.producer.send(self.topicName,ent,timestamp_ms=timestamp)
-                print("Record pushed -- ",timestamp)
         else:
-            print("Fetch Failed!")
+            print("Fetch Failed! {}".format(kwargs))
 
     def startBigPeriod(self,startTS,endTS):
         timeStamp = startTS
@@ -70,11 +87,35 @@ class EventProducer():
             timeStamp += window
 
 
+if __name__ == '__main__':
+    # Command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument( "-t","--topic", type=str,
+            help="Kafka topic where data is pushed (e.g. 'ihr_atlas_probe_discolog')", default='default_atlas_probe_discolog')
+    parser.add_argument( "-s","--startTime", type=str, help="Start time for fetching data")
+    parser.add_argument( "-e","--endTime", type=str, help="End time for fetching data")
+    args = parser.parse_args()
 
-import time
-start_time = time.time()
-#EXAMPLE
-#EventProducer().startBigPeriod(1466898669,1483228800)
-EventProducer().startLive()
-elapsed_time = time.time() - start_time
-print(elapsed_time)
+    # Logging 
+    # FORMAT = '%(asctime)s %(processName)s %(message)s'
+    # logging.basicConfig(
+            # format=FORMAT, filename='ihr-kafka-disco-eventproducer.log' , 
+            # level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S'
+            # )
+    # logging.info("Started: %s" % sys.argv)
+    # logging.info("Arguments: %s" % args)
+
+    start_time = time.time()
+
+    ep = EventProducer(args.topic)
+
+    if args.startTime and args.endTime:
+        start = arrow.get(args.startTime)
+        end = arrow.get(args.endTime)
+        ep.startPeriod(start.timestamp, end.timestamp)
+    else:
+        # Get live data
+        ep.startLive()
+
+    elapsed_time = time.time() - start_time
+    print(elapsed_time)

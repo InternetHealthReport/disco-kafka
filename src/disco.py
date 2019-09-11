@@ -8,6 +8,7 @@ from burstDetector import BurstDetector
 from kafka import KafkaProducer
 import msgpack
 from datetime import datetime
+import logging
 
 import threading
 from probeTracker import ProbeTracker
@@ -15,7 +16,7 @@ from probeTracker import ProbeTracker
 from concurrent.futures import ThreadPoolExecutor
 
 class Disco():
-    def __init__(self,threshold,startTime,endTime,timeWindow,probeData):
+    def __init__(self,threshold,startTime,endTime,timeWindow,probeData, topicIn, topicOut):
         self.threshold = threshold
 
         self.startTime = startTime
@@ -36,7 +37,8 @@ class Disco():
             value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
             batch_size=65536,linger_ms=4000,compression_type='gzip')
 
-        self.topicName = "ihr_disco_burst"
+        self.topicIn = topicIn
+        self.topicOut = topicOut 
 
         self.executor = ThreadPoolExecutor(max_workers=10)
 
@@ -137,13 +139,11 @@ class Disco():
                         event["probelist"] = disconnectedProbes
                         event["totalprobes"] = totalProbes
 
-                        self.producer.send(self.topicName,event,timestamp_ms=int(startTime*1000))
+                        self.producer.send(self.topicOut,event,timestamp_ms=int(startTime*1000))
                         self.executor.submit(self.trackDisconnectedProbes,(streamType,streamName,startTime,disconnectedProbes))
 
                     except Exception as e:
-                        print("\n\n\n\n")
-                        print("Exception: ",e)
-                        print("\n\n\n\n")
+                        logging.error("Exception: ",e)
 
     def updateDisconnectedProbes(self,centralTimeStamp,eventData):
         startThreshold = centralTimeStamp - (3*self.timeWindow) 
@@ -289,7 +289,7 @@ class Disco():
             startTime = self.startTime
 
         while True:
-            eventReader = EventConsumer(startTime,self.timeWindow)
+            eventReader = EventConsumer(startTime,self.timeWindow, self.topicIn)
             eventReader.attach(self)
             eventReader.start()
 
@@ -309,13 +309,13 @@ class Disco():
             lastProcessedTimeStamp = startTime + self.timeWindow
             startTime += self.slideWindow
 
-            print("Processed till ",self.asDate(startTime))
+            logging.warning("Processed till {}".format(self.asDate(startTime)))
 
             if self.endTime is not None:
                 if startTime > self.endTime:
                     break
 
-        print("End reached!")
+        logging.warning("End reached!")
 
 
 """
