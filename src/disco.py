@@ -5,6 +5,7 @@ Reports Outage Events in Realtime
 from eventConsumer import EventConsumer
 from streamSplitter import StreamSplitter
 from burstDetector import BurstDetector
+from kafka.admin import KafkaAdminClient, NewTopic
 from kafka import KafkaProducer
 import msgpack
 from datetime import datetime
@@ -14,6 +15,21 @@ import threading
 from probeTracker import ProbeTracker
 
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+
+def trackDisconnectedProbes(args):
+    streamType = args[0]
+    streamName = args[1]
+    startTime = args[2]
+    disconnectedProbes = args[3]
+    burstLevel = args[4]
+    topicIn = args[5]
+    topicOut = args[6]
+    tracker = ProbeTracker(streamType, streamName, startTime, disconnectedProbes, 
+            burstLevel, topicIn, topicOut)
+    tracker.start()
+    del tracker
+
 
 class Disco():
     def __init__(self,threshold,startTime,endTime,timeWindow,probeData, topicIn, topicOut):
@@ -33,14 +49,28 @@ class Disco():
 
         self.disconnectedProbes = {}
 
-        self.producer = KafkaProducer(bootstrap_servers='localhost:9092', acks=0,
+        admin_client = KafkaAdminClient(
+                bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
+                client_id='disco_disco_admin')
+
+        try:
+            topic_list = [NewTopic(name=topicOut, num_partitions=1, replication_factor=2, topic_configs={'retention.ms':30758400000})]
+            admin_client.create_topics(new_topics=topic_list, validate_only=False)
+        except Exception as e:
+            logging.warning(str(e))
+            pass
+        finally:
+            admin_client.close()
+
+        self.producer = KafkaProducer(bootstrap_servers='localhost:9092', 
             value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
-            batch_size=65536,linger_ms=4000,compression_type='gzip')
+            compression_type='snappy')
 
         self.topicIn = topicIn
         self.topicOut = topicOut 
 
-        self.executor = ThreadPoolExecutor(max_workers=10)
+        # self.executor = ThreadPoolExecutor(max_workers=10)
+        self.executor = ProcessPoolExecutor(max_workers=10)
 
     def initNumProbes(self):
         self.numTotalProbes["ASN"] = {}
@@ -81,15 +111,6 @@ class Disco():
                 self.numTotalProbes["ADMIN2"][probeAdmin2] = 1
             else:
                 self.numTotalProbes["ADMIN2"][probeAdmin2] += 1 
-
-    def trackDisconnectedProbes(self,args):
-        streamType = args[0]
-        streamName = args[1]
-        startTime = args[2]
-        disconnectedProbes = args[3]
-        tracker = ProbeTracker(streamType,streamName,startTime,disconnectedProbes)
-        tracker.start()
-        del tracker
 
     def eventDataProcessor(self,data):
         #get event probe
@@ -140,7 +161,7 @@ class Disco():
                         event["totalprobes"] = totalProbes
 
                         self.producer.send(self.topicOut,event,timestamp_ms=int(startTime*1000))
-                        self.executor.submit(self.trackDisconnectedProbes,(streamType,streamName,startTime,disconnectedProbes))
+                        self.executor.submit(trackDisconnectedProbes,(streamType,streamName,startTime,disconnectedProbes, level, self.topicIn, self.topicOut+'_reconnect'))
 
                     except Exception as e:
                         logging.error("Exception: ",e)

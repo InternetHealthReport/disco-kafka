@@ -66,6 +66,10 @@ class BurstDetector():
         timeSeries = np.array(timeSeries)
     
         bursts = pybursts.kleinberg(timeSeries,s=2,gamma=0.5,T=self.timeRange,n=numOfProbes)
+        # if len(bursts) > 10:
+            # print("--------------------")
+            # print(timeSeries)
+            # print(bursts)
         
         return bursts
 
