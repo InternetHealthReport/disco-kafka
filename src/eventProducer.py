@@ -3,6 +3,7 @@ Pushes Atlas Live Events to Kafka indefinitely
 """
 
 import sys
+import logging
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka import KafkaProducer
 from datetime import datetime
@@ -12,7 +13,6 @@ from ripe.atlas.cousteau import AtlasResultsRequest
 import msgpack
 import argparse
 import arrow
-import logging
 
 class EventProducer():
     def __init__(self, topicName):
@@ -52,14 +52,13 @@ class EventProducer():
                         timestamp = ent["timestamp"]
                         timestamp = timestamp*1000      #convert to milliseconds
                         self.producer.send(self.topicName,ent,timestamp_ms=timestamp)
-                        print("Record pushed")
                 else:
-                    print("Fetch Failed! {}".format(kwargs))
+                    logging.error("Fetch Failed! {}".format(kwargs))
 
                 time.sleep(WINDOW)
                 currentTS += (WINDOW + 1)
             except Exception as e:
-                print("Error: ",e)
+                logging.error("Error: ",e)
 
     def startPeriod(self,startTS,endTS):
         kwargs = {
@@ -76,7 +75,7 @@ class EventProducer():
                 timestamp = timestamp*1000      #convert to milliseconds
                 self.producer.send(self.topicName,ent,timestamp_ms=timestamp)
         else:
-            print("Fetch Failed! {}".format(kwargs))
+            logging.error("Fetch Failed! {}".format(kwargs))
 
     def startBigPeriod(self,startTS,endTS):
         timeStamp = startTS
@@ -97,13 +96,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Logging 
-    # FORMAT = '%(asctime)s %(processName)s %(message)s'
-    # logging.basicConfig(
-            # format=FORMAT, filename='ihr-kafka-disco-eventproducer.log' , 
-            # level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S'
-            # )
-    # logging.info("Started: %s" % sys.argv)
-    # logging.info("Arguments: %s" % args)
+    FORMAT = '%(asctime)s %(processName)s %(message)s'
+    logging.basicConfig(
+            format=FORMAT, filename='ihr-kafka-disco-eventproducer.log' , 
+            level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S'
+            )
+    logging.info("Started: %s" % sys.argv)
+    logging.info("Arguments: %s" % args)
 
     start_time = time.time()
 
@@ -118,4 +117,4 @@ if __name__ == '__main__':
         ep.startLive()
 
     elapsed_time = time.time() - start_time
-    print(elapsed_time)
+    logging.warning(elapsed_time)

@@ -24,7 +24,6 @@ class EventConsumer():
                 bootstrap_servers=['localhost:9092'],
                 consumer_timeout_ms=1000,value_deserializer=lambda v: msgpack.unpackb(v, raw=False)
                 )
-        self.consumer.subscribe(topicName)
 
         self.windowSize = windowInSeconds * 1000    #milliseconds
 
@@ -43,16 +42,12 @@ class EventConsumer():
         timestampToBreakAt = timestampToSeek + self.windowSize
 
         #print("Time Start: ",timestampToSeek,", Time End: ",timestampToBreakAt)
-
-        self.consumer.poll(10000)
-        topicPartitions = self.consumer.assignment()
-
-        partitions_timestamps = dict( zip(topicPartitions, [timestampToSeek]*len(topicPartitions) ) )
-        offsets = self.consumer.offsets_for_times(partitions_timestamps)
-
+        tp = TopicPartition(self.topicName, 0)
+        self.consumer.assign([tp])
+        offsets = self.consumer.offsets_for_times({tp: timeStampToSeek})
         for partition, toffset in offsets.items():
             self.consumer.seek(partition, toffset.offset)
-        
+
         for message in self.consumer:
             messageTimestamp = message.timestamp
 
