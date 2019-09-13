@@ -28,20 +28,27 @@ class ProbeDataConsumer():
         Checks whether record passes the specified filters
         """
         
-        if record["status"]["name"] == "Abandoned" and (self.startTS is not None):             #Probes abandoned before measurement period should be dropped
-            if record["status"]["since"] < self.startTS:
+        if record["status"]["name"] == "Abandoned":
+            if self.startTS is not None:             #Probes abandoned before measurement period should be dropped
+                if record["status"]["since"] < self.startTS:
+                    return False
+            else:
                 return False
 
         if record["status"]["name"] == "Never Connected":       #Never connected probes should be dropped
             return False
 
-        if (record["status"]["name"] == "Connected") and (self.endTS is not None):          #Probes connected after end of measurement period should be dropped
-            if record["first_connected"] > self.endTS:
-                return False
+        # if (record["status"]["name"] == "Connected"):
+            # if self.endTS is not None:          #Probes connected after end of measurement period should be dropped
+                # if record["first_connected"] > self.endTS:
+                    # return False
 
-        if (record["status"]["name"] == "Disconnected") and (self.startTS is not None):     #Probes disconnected before start of measurement period should be dropped
-            if record["status"]["since"] < self.startTS:
-                return False
+        # if (record["status"]["name"] == "Disconnected"): 
+            # if self.startTS is not None:     #Probes disconnected before start of measurement period should be dropped
+                # if record["status"]["since"] < self.startTS:
+                    # return False
+            # else:
+                # return False
 
         probeASNv4 = record["asn_v4"]
         probeASNv6 = record["asn_v6"]

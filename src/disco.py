@@ -40,6 +40,8 @@ class Disco():
         self.timeWindow = timeWindow
 
         self.slideWindow = 3600
+        #Report only probes disconnected discoProbesWindow seconds before/after the burst starting time
+        self.discoProbesWindow = 900
 
         self.probeData = probeData
         self.eventData = []
@@ -54,7 +56,8 @@ class Disco():
                 client_id='disco_disco_admin')
 
         try:
-            topic_list = [NewTopic(name=topicOut, num_partitions=1, replication_factor=2, topic_configs={'retention.ms':30758400000})]
+            topic_list = [NewTopic(name=topicOut, num_partitions=1, replication_factor=2, 
+                topic_configs={'retention.ms':30758400000})]
             admin_client.create_topics(new_topics=topic_list, validate_only=False)
         except Exception as e:
             logging.warning(str(e))
@@ -113,6 +116,8 @@ class Disco():
                 self.numTotalProbes["ADMIN2"][probeAdmin2] += 1 
 
     def eventDataProcessor(self,data):
+        '''This method is called by eventConsumer every time there is a new
+        message from Kafka.'''
         #get event probe
         eventProbeId = data["prb_id"]
         eventType = data["event"]
@@ -127,9 +132,10 @@ class Disco():
         else:
             self.disconnectedProbes[streamName][probeId] = timeStamp
 
-    def cleanDisconnectedProbes(self,disconnectedProbes,outageTime,window):  #Gives the probes disconnected within the time window of burst starting time
-        startThreshold = outageTime - (window/4)
-        endThreshold = outageTime + (window/4)
+    def cleanDisconnectedProbes(self,disconnectedProbes, outageTime):  
+        #Report only probes disconnected near the burst starting time
+        startThreshold = outageTime - self.discoProbesWindow
+        endThreshold = outageTime + self.discoProbesWindow
 
         cleanedDisconnectedProbes = {}
 
@@ -148,7 +154,7 @@ class Disco():
 
                     try:
                         disconnectedProbes = self.disconnectedProbes[streamName]
-                        disconnectedProbes = self.cleanDisconnectedProbes(disconnectedProbes,startTime,self.slideWindow)
+                        disconnectedProbes = self.cleanDisconnectedProbes(disconnectedProbes,startTime)
                         
                         totalProbes = self.numTotalProbes[streamType][streamName]
 
@@ -167,7 +173,9 @@ class Disco():
                         logging.error("Exception: ",e)
 
     def updateDisconnectedProbes(self,centralTimeStamp,eventData):
-        startThreshold = centralTimeStamp - (3*self.timeWindow) 
+        '''Remove old data (more than 3*timeWindow centralTimeStamp) '''
+
+        startThreshold = centralTimeStamp #- (3*self.timeWindow) 
 
         #clear all data older than threshold
         idsToRemove = []
@@ -189,7 +197,6 @@ class Disco():
 
         for streamName in streamNamesToRemove:
             del self.disconnectedProbes[streamName]
-
 
         #store new disconnect events
         for event in eventData:
@@ -292,8 +299,6 @@ class Disco():
                     highestLevel = max(burstLevelsAgainstPeriods[burstPeriod])
 
                     burstEvent[0] = highestLevel
-
-
 
         return bursts
 

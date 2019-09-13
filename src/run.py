@@ -28,7 +28,10 @@ class Runner():
 
     def run(self):
         #Populate probe id's
-        probeCon = ProbeDataConsumer(countryFilters=self.countryFilters,asnFilters=self.asnFilters,proximityFilters=self.proximityFilters)
+        probeCon = ProbeDataConsumer(
+                self.asnFilters, self.countryFilters, self.proximityFilters, 
+                self.startTime, self.endTime
+                )
         probeCon.attach(self)
         probeCon.start()
 

@@ -20,7 +20,8 @@ class BurstDetector():
 
         self.timeRange = timeRange
 
-        self.minProbes = 10
+        self.minProbes = 5
+        self.minSignalLength = 5
 
     def initNumProbes(self):
         self.numTotalProbes["ASN"] = {}
@@ -114,6 +115,9 @@ class BurstDetector():
                 continue
 
             timeSeries = self.getTimeSeries(stream)
+            if len(timeSeries) < self.minSignalLength:
+                continue
+
             bursts = self.kleinberg(timeSeries,numTotalProbes)
             bursts = self.cleanBurstData(bursts,threshold)
 
