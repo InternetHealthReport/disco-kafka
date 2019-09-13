@@ -31,14 +31,15 @@ def trackDisconnectedProbes(args):
 
 
 class Disco():
-    def __init__(self,threshold,startTime,endTime,timeWindow,probeData, topicIn, topicOut):
+    def __init__(self,threshold,startTime,endTime,timeWindow,probeData, topicIn, topicOut, slideStep=3600):
         self.threshold = threshold
 
         self.startTime = startTime
         self.endTime = endTime
         self.timeWindow = timeWindow
 
-        self.slideWindow = 3600
+        # Slide the window by this amount
+        self.slideWindow = slideStep
         #Report only probes disconnected discoProbesWindow seconds before/after the burst starting time
         self.discoProbesWindow = 900
 

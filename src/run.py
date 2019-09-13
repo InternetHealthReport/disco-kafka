@@ -8,7 +8,7 @@ import logging
 class Runner():
     def __init__(self,threshold,startTime,endTime,timeWindow,
             countryFilters,asnFilters,proximityFilters, 
-            topicIn, topicOut):
+            topicIn, topicOut, slideStep=3600):
         self.probeData = {}
 
         self.threshold = threshold
@@ -21,6 +21,8 @@ class Runner():
 
         self.topicIn = topicIn
         self.topicOut = topicOut
+
+        self.slideStep = slideStep
 
     def probeDataProcessor(self,data):
         probeId = data["id"]
@@ -39,7 +41,7 @@ class Runner():
 
         Disco(
                 threshold=self.threshold,startTime=self.startTime,endTime=self.endTime,timeWindow=self.timeWindow,
-                probeData=self.probeData, topicIn=self.topicIn, topicOut=self.topicOut
+                probeData=self.probeData, topicIn=self.topicIn, topicOut=self.topicOut, slideStep=self.slideStep
             ).start()
 
 
