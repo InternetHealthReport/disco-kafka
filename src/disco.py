@@ -126,7 +126,7 @@ class Disco():
             self.eventData.append(data)
 
     def addDisconnectedProbe(self,streamName,probeId,timeStamp):
-        if streamName not in self.disconnectedProbes.keys():
+        if streamName not in self.disconnectedProbes:
             self.disconnectedProbes[streamName] = {probeId:timeStamp}
         else:
             self.disconnectedProbes[streamName][probeId] = timeStamp
@@ -152,7 +152,7 @@ class Disco():
                     startTime = burstEvent[1]
 
                     try:
-                        disconnectedProbes = self.disconnectedProbes[streamName]
+                        disconnectedProbes = self.disconnectedProbes.get(streamName, {})
                         disconnectedProbes = self.cleanDisconnectedProbes(disconnectedProbes,startTime)
 
                         if len(disconnectedProbes) == 0:
@@ -175,9 +175,9 @@ class Disco():
                         logging.error("Exception: ",e)
 
     def updateDisconnectedProbes(self,centralTimeStamp,eventData):
-        '''Remove old data (more than 3*timeWindow centralTimeStamp) '''
+        '''Remove old data (more than timeWindow-centralTimeStamp) '''
 
-        startThreshold = centralTimeStamp #- (3*self.timeWindow) 
+        startThreshold = centralTimeStamp - self.timeWindow 
 
         #clear all data older than threshold
         idsToRemove = []
