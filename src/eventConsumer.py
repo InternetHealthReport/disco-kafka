@@ -22,7 +22,7 @@ class EventConsumer():
                 auto_offset_reset="earliest",
                 enable_auto_commit=False,
                 bootstrap_servers=['localhost:9092'],
-                consumer_timeout_ms=1000,value_deserializer=lambda v: msgpack.unpackb(v, raw=False)
+                value_deserializer=lambda v: msgpack.unpackb(v, raw=False)
                 )
         self.topicPartition = TopicPartition(self.topicName,0)
 

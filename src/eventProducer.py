@@ -17,7 +17,7 @@ import arrow
 class EventProducer():
     def __init__(self, topicName):
         admin_client = KafkaAdminClient(
-                bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
+               bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
                 client_id='disco_eventproducer_admin')
 
         try:
@@ -35,15 +35,15 @@ class EventProducer():
 
         self.topicName = topicName
 
-    def startLive(self):
+    def startLive(self, endTime=None):
         WINDOW = 5*60
         currentTS = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
-        while True:
+        while endTime is None or endTime>currentTS:
             try:
                 kwargs = {
                     "msm_id": 7000,
                     "start": datetime.utcfromtimestamp(currentTS-2*WINDOW),
-                    "stop": datetime.utcfromtimestamp(currentTS-WINDOW),
+                    "stop": datetime.utcfromtimestamp((currentTS-WINDOW) -1),
                 }
 
                 is_success, results = AtlasResultsRequest(**kwargs).create()
@@ -56,7 +56,7 @@ class EventProducer():
                     logging.error("Fetch Failed! {}".format(kwargs))
 
                 time.sleep(WINDOW)
-                currentTS += (WINDOW + 1)
+                currentTS += WINDOW 
             except Exception as e:
                 logging.error("Error: ",e)
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     # Logging 
     FORMAT = '%(asctime)s %(processName)s %(message)s'
     logging.basicConfig(
-            format=FORMAT, filename='ihr-kafka-disco-eventproducer.log' , 
+            format=FORMAT, filename='disco-eventproducer.log' , 
             level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S'
             )
     logging.info("Started: %s" % sys.argv)
