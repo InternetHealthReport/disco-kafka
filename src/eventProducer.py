@@ -111,7 +111,10 @@ if __name__ == '__main__':
     if args.startTime and args.endTime:
         start = arrow.get(args.startTime)
         end = arrow.get(args.endTime)
-        ep.startPeriod(start.timestamp, end.timestamp)
+        if (end-start).total_seconds() > 3600*7:
+            ep.startBigPeriod(start.timestamp, end.timestamp)
+        else:
+            ep.startPeriod(start.timestamp, end.timestamp)
     else:
         # Get live data
         ep.startLive()
