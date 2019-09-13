@@ -99,7 +99,7 @@ if __name__ == '__main__':
     # Logging 
     FORMAT = '%(asctime)s %(processName)s %(message)s'
     logging.basicConfig(
-            format=FORMAT, filename='ihr-kafka-disco-detection.log' , 
+            format=FORMAT, filename='disco-detection.log' , 
             level=logging.WARN, datefmt='%Y-%m-%d %H:%M:%S'
             )
     logging.info("Started: %s" % sys.argv)

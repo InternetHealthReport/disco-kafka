@@ -153,6 +153,9 @@ class Disco():
                     try:
                         disconnectedProbes = self.disconnectedProbes[streamName]
                         disconnectedProbes = self.cleanDisconnectedProbes(disconnectedProbes,startTime)
+
+                        if len(disconnectedProbes) == 0:
+                            continue
                         
                         totalProbes = self.numTotalProbes[streamType][streamName]
 
