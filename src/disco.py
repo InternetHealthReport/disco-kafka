@@ -14,7 +14,6 @@ import logging
 import threading
 from probeTracker import ProbeTracker
 
-from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 
 def trackDisconnectedProbes(args):
@@ -72,7 +71,6 @@ class Disco():
         self.topicIn = topicIn
         self.topicOut = topicOut 
 
-        # self.executor = ThreadPoolExecutor(max_workers=10)
         self.executor = ProcessPoolExecutor(max_workers=10)
 
     def initNumProbes(self):
@@ -311,6 +309,8 @@ class Disco():
 
         if self.startTime is None:
             startTime = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
+            # get data from the preceding window
+            startTime = (startTime - self.windowTime) + self.slideWindow
         else:
             startTime = self.startTime
 
@@ -335,11 +335,14 @@ class Disco():
             lastProcessedTimeStamp = startTime + self.timeWindow
             startTime += self.slideWindow
 
-            logging.warning("Processed till {}".format(self.asDate(startTime)))
+            logging.warning("Processed till {}".format(self.asDate(lastProcessedTimeStamp)))
 
             if self.endTime is not None:
-                if startTime > self.endTime:
+                if startTime >= self.endTime:
                     break
+
+        logging.warning("Waiting for sub-processes")
+        self.executor.shutdown(wait=True)
 
         logging.warning("End reached!")
 
