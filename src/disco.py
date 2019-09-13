@@ -310,9 +310,10 @@ class Disco():
         if self.startTime is None:
             startTime = int((datetime.utcnow() - datetime.utcfromtimestamp(0)).total_seconds())
             # get data from the preceding window
-            startTime = (startTime - self.windowTime) + self.slideWindow
+            startTime = (startTime - self.timeWindow) + self.slideWindow
         else:
             startTime = self.startTime
+            startTime = (startTime - self.timeWindow) + self.slideWindow
 
         while True:
             eventReader = EventConsumer(startTime,self.timeWindow, self.topicIn)
@@ -338,7 +339,7 @@ class Disco():
             logging.warning("Processed till {}".format(self.asDate(lastProcessedTimeStamp)))
 
             if self.endTime is not None:
-                if startTime >= self.endTime:
+                if lastProcessedTimeStamp >= self.endTime:
                     break
 
         logging.warning("Waiting for sub-processes")
