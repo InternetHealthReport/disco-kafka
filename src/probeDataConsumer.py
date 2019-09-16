@@ -38,17 +38,20 @@ class ProbeDataConsumer():
         if record["status"]["name"] == "Never Connected":       #Never connected probes should be dropped
             return False
 
-        # if (record["status"]["name"] == "Connected"):
-            # if self.endTS is not None:          #Probes connected after end of measurement period should be dropped
-                # if record["first_connected"] > self.endTS:
-                    # return False
+        if (record["status"]["name"] == "Connected") or (record["status"]["name"] == "Disconnected"):
+            if self.endTS is not None:          
+                if "first_connected" not in record or record['first_connected'] is None:
+                    return False
+                #Probes connected after end of measurement period should be dropped
+                if record["first_connected"] > self.endTS:
+                    return False
 
-        # if (record["status"]["name"] == "Disconnected"): 
-            # if self.startTS is not None:     #Probes disconnected before start of measurement period should be dropped
-                # if record["status"]["since"] < self.startTS:
-                    # return False
-            # else:
-                # return False
+        if (record["status"]["name"] == "Disconnected"): 
+            if self.startTS is not None:     #Probes disconnected before start of measurement period should be dropped
+                if record["status"]["since"] < self.startTS:
+                    return False
+            else:
+                return False
 
         probeASNv4 = record["asn_v4"]
         probeASNv6 = record["asn_v6"]
@@ -82,9 +85,6 @@ class ProbeDataConsumer():
                 if probeAdmin1:
                     if country in probeAdmin1:
                         countryCheckPassed = True
-
-
-
 
 
         probeLocation = record["geometry"]["coordinates"]

@@ -7,13 +7,7 @@ from pybursts import pybursts
 import logging
 
 class BurstDetector():
-    def __init__(self,streams,probeData,timeRange):
-        self.asnStreams = streams["ASN"]
-        self.countryStreams = streams["COUNTRY"]
-        self.admin1Streams = streams["ADMIN1"]
-        self.admin2Streams = streams["ADMIN2"]
-        #TODO: add stateStreams
-
+    def __init__(self,probeData, timeRange):
         self.probeData = probeData
         self.numTotalProbes = {}
         self.initNumProbes()
@@ -22,6 +16,13 @@ class BurstDetector():
 
         self.minProbes = 5
         self.minSignalLength = 5
+
+    def initStreams(self, streams, timeRange):
+        self.asnStreams = streams["ASN"]
+        self.countryStreams = streams["COUNTRY"]
+        self.admin1Streams = streams["ADMIN1"]
+        self.admin2Streams = streams["ADMIN2"]
+        #TODO: add stateStreams
 
     def initNumProbes(self):
         self.numTotalProbes["ASN"] = {}
@@ -122,6 +123,11 @@ class BurstDetector():
             bursts = self.cleanBurstData(bursts,threshold)
 
             if len(bursts) > 0:
+                if asn==24016:
+                    print('-------')
+                    print(timeSeries)
+                    print(bursts)
+                    print(stream)
                 burstsByASN[asn] = bursts
 
         #Country Streams
@@ -134,6 +140,9 @@ class BurstDetector():
                 continue
 
             timeSeries = self.getTimeSeries(stream)
+            if len(timeSeries) < self.minSignalLength:
+                continue
+
             bursts = self.kleinberg(timeSeries,numTotalProbes)
             bursts = self.cleanBurstData(bursts,threshold)
 
@@ -150,6 +159,9 @@ class BurstDetector():
                 continue
 
             timeSeries = self.getTimeSeries(stream)
+            if len(timeSeries) < self.minSignalLength:
+                continue
+
             bursts = self.kleinberg(timeSeries,numTotalProbes)
             bursts = self.cleanBurstData(bursts,threshold)
 
@@ -166,6 +178,9 @@ class BurstDetector():
                 continue
 
             timeSeries = self.getTimeSeries(stream)
+            if len(timeSeries) < self.minSignalLength:
+                continue
+
             bursts = self.kleinberg(timeSeries,numTotalProbes)
             bursts = self.cleanBurstData(bursts,threshold)
 

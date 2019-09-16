@@ -93,7 +93,7 @@ class ProbeTracker():
                     for message in messages:
                         self.eventDataProcessor(message.value)
 
-                    if len(self.reconnectedProbes) > self.nbProbesThreshold:
+                    if len(self.reconnectedProbes) >= self.nbProbesThreshold:
                         self.pushEventToKafka(self.getTimeForLastReconnect())
                         stop = True
                         break

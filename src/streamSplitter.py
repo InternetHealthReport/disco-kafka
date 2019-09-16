@@ -79,8 +79,14 @@ class StreamSplitter():
         
 
     def getStreams(self,events):
-        for event in events:
-            self.addEvent(event)
+        self.asnStreams = {}
+        self.countryStreams = {}
+        self.admin1Streams = {}
+        self.admin2Streams = {}
+
+        for event_probe in events.values():
+            for event in event_probe:
+                self.addEvent(event)
 
         return {"ASN":self.asnStreams,"COUNTRY":self.countryStreams,"ADMIN1":self.admin1Streams,"ADMIN2":self.admin2Streams}
 
