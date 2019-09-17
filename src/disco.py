@@ -131,7 +131,8 @@ class Disco():
             self.eventData[eventProbeId].append(data)
         if (eventType == "connect") and (eventProbeId in self.eventData):
             # Ignore disconnection quickly followed by a reconnect
-            if data['timestamp'] - self.eventData[eventProbeId][-1]['timestamp'] < self.discoProbesWindow: 
+            if (data['timestamp'] > self.eventData[eventProbeId][-1]['timestamp'] 
+                    and data['timestamp'] - self.eventData[eventProbeId][-1]['timestamp'] < self.discoProbesWindow): 
                 del self.eventData[eventProbeId][-1]
                 if len(self.eventData[eventProbeId]) == 0:
                     del self.eventData[eventProbeId]

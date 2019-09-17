@@ -123,11 +123,6 @@ class BurstDetector():
             bursts = self.cleanBurstData(bursts,threshold)
 
             if len(bursts) > 0:
-                if asn==24016:
-                    print('-------')
-                    print(timeSeries)
-                    print(bursts)
-                    print(stream)
                 burstsByASN[asn] = bursts
 
         #Country Streams

@@ -12,6 +12,14 @@ import logging
 class ProbeTracker():
     def __init__(self,streamType,streamName,startTime,disconnectedProbes, level,
             topicIn, topicOut):
+        # Logging 
+        FORMAT = '%(asctime)s %(processName)s %(message)s'
+        logging.basicConfig(
+                format=FORMAT, filename='disco-probetracker.log' , 
+                level=logging.WARN, datefmt='%Y-%m-%d %H:%M:%S'
+                )
+        logging.info("Probe tracker started: {} {} {} {}".format(streamType, streamName, startTime, disconnectedProbes))
+
         self.streamType = streamType
         self.streamName = streamName
         self.startTime = startTime
@@ -102,7 +110,7 @@ class ProbeTracker():
             self.consumer.close()
 
         except Exception as e:
-            print(e)
+            logging.error(e)
 
 
 
