@@ -44,9 +44,9 @@ class Disco():
         self.slideWindow = slideStep
         # Ignore disconnection events followed by a reconnect within
         # discoProbesWindow seconds
-        # Also report only probes disconnected discoProbesWindow/2 
+        # Also report only probes disconnected discoProbesWindow 
         # seconds before/after the burst starting time
-        self.discoProbesWindow = 1800
+        self.discoProbesWindow = 300
 
         self.probeData = probeData
         self.eventData = defaultdict(list)
@@ -145,8 +145,8 @@ class Disco():
 
     def cleanDisconnectedProbes(self,disconnectedProbes, outageTime):  
         #Report only probes disconnected near the burst starting time
-        startThreshold = outageTime - self.discoProbesWindow/2
-        endThreshold = outageTime + self.discoProbesWindow/2
+        startThreshold = outageTime - self.discoProbesWindow
+        endThreshold = outageTime + self.discoProbesWindow
 
         cleanedDisconnectedProbes = {}
 
