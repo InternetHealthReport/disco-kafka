@@ -13,7 +13,8 @@ topicBurst = 'ihr_disco_bursts'
 
 # Start/End times
 startTime = arrow.utcnow()
-startTime.replace(microsecond=0, second=0)
+# startTime = arrow.get('2020-03-22 00:00')
+startTime.replace(microsecond=0, second=0, minute=0, hour=0)
 endTime = startTime.shift(days=1) 
 
 # Logging 
@@ -26,7 +27,7 @@ logging.warning("Started: %s" % sys.argv)
 
 # Start Disco
 main = Runner(threshold,
-        startTime.timestamp, endTime.timestamp, timeWindow,
+        startTime.timestamp(), endTime.timestamp(), timeWindow,
         [], [], [],
         topicAtlas, topicBurst)
 main.run()

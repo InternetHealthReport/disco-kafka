@@ -10,7 +10,7 @@ class ProbeDataConsumer():
     def __init__(self,asnFilters=[],countryFilters=[],proximityFilters=[],startTS=None,endTS=None):
         self.topicName = "ihr_atlas_probe_archive"
 
-        self.consumer = KafkaConsumer(self.topicName,auto_offset_reset="earliest",
+        self.consumer = KafkaConsumer(self.topicName,auto_offset_reset="earliest", consumer_timeout_ms=1000,
                 bootstrap_servers=['localhost:9092'],value_deserializer=lambda v: msgpack.unpackb(v, raw=False))
 
         self.asnFilters = asnFilters

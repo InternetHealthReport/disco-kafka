@@ -61,7 +61,7 @@ logging.info("Started: %s" % sys.argv)
 
 # Start Disco
 main = Runner(threshold,
-        startTime.timestamp, endTime.timestamp, timeWindow,
+        startTime.timestamp(), endTime.timestamp(), timeWindow,
         [], [], [],
         topicIn, topicOut, slideWindow)
 main.run()

@@ -69,12 +69,12 @@ if __name__ == '__main__':
         sys.exit("Error: Threshold not specified; for a list of args, type python3 run.py -h")
 
     if args.startTime:
-        startTime = arrow.get(args.startTime).timestamp
+        startTime = arrow.get(args.startTime).timestamp()
     else:
         startTime = None
 
     if args.endTime:
-        endTime = arrow.get(args.endTime).timestamp
+        endTime = arrow.get(args.endTime).timestamp()
     else:
         endTime = None
 

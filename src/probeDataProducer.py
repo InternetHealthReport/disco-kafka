@@ -26,6 +26,7 @@ class ProbeDataProducer():
         self.estimateProbeNoise()
 
     def estimateProbeNoise(self, eventTopicName="ihr_atlas_probe_discolog"):
+        print('estimateProbeNoise started')
 
         consumer = KafkaConsumer(
                 auto_offset_reset="earliest",
@@ -61,13 +62,17 @@ class ProbeDataProducer():
             if msg['event'] == 'disconnect':
                 self.disco_count[msg['prb_id']][int(msg['timestamp'] / (8*3600))] += 1
 
+        print('estimateProbeNoise finished')
 
     def adjustConfig(self):    
+        print('adjustConfig started')
         #To adjust configurations when the topic is just created
         admin = KafkaAdminClient()
-        altered = admin.alter_configs([ConfigResource(ConfigResourceType.TOPIC,"ihr_atlas_probe_archive",{"retention.ms":1,"cleanup.policy":"compact"})])
+        altered = admin.alter_configs([ConfigResource(ConfigResourceType.TOPIC,"ihr_atlas_probe_archive",{"retention.ms":1,"cleanup.policy":"compact","replication.factor":2})])
+        print('adjustConfig finished')
 
     def augmentWithLocation(self,record):
+        print('augment started')
         probeLong = record["geometry"]["coordinates"][0]
         probeLat = record["geometry"]["coordinates"][1]
 
@@ -97,6 +102,7 @@ class ProbeDataProducer():
         record["admin2"] = highPrecisionLoc
         record["adminCoordinates"] = adminCoordinates
 
+        print('augment finished')
         return record
 
     def flagNoisyProbe(self, record):
@@ -104,13 +110,14 @@ class ProbeDataProducer():
 
         num_disco = len(self.disco_count[record['id']])
 
-        if num_disco > 16:
+        if num_disco > 14:
             record['status']['name'] = 'Noisy' 
             record['status']['num_disco'] = num_disco
 
         return record
 
     def start(self):
+        print('start')
         link = "https://atlas.ripe.net/api/v2/probes/archive?day="+self.date
 
         data = requests.get(link).json()
@@ -121,12 +128,14 @@ class ProbeDataProducer():
     
         """
 
+        print('got data')
         filename = data["source_filename"]
         timestamp = data["snapshot_datetime"]
         data = data["results"]
 
         count = 0
 
+        print('recording')
         for record in data:
             #Push individual record to Kafka
             record["source_filename"] = filename
@@ -144,10 +153,12 @@ class ProbeDataProducer():
 
             self.producer.send(self.topicName,key=bytes(str(currentId), "utf-8"),value=record,timestamp_ms=timestampInMS) 
 
+        print('finished recording')
 
-#EXAMPLE
-pdp = ProbeDataProducer()
-pdp.adjustConfig()
-pdp.start()
+if __name__ == "__main__":
+    #EXAMPLE
+    pdp = ProbeDataProducer()
+    pdp.adjustConfig()
+    pdp.start()
 
 

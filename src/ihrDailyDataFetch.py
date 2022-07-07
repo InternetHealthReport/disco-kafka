@@ -21,5 +21,5 @@ logging.info("Started: %s" % sys.argv)
 
 ep = eventProducer.EventProducer(topic)
 # Get one day of live data
-ep.startLive(endTime.timestamp)
+ep.startLive(endTime.timestamp())
 
