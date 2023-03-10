@@ -1,6 +1,26 @@
 # Disco-Kafka
 Internet outage detection with RIPE Atlas disconnections
 
+## Installation using Docker
+
+``````
+docker build -t disco-kafka .
+``````
+``````
+docker run -it disco-kafka &
+``````
+
+* To exec into the container :
+``````
+docker ps
+docker exec -it <container_name> bash
+``````
+
+* To stop the container :
+``````
+docker stop <container_name>
+``````
+
 ## Requirements
 - reverse_geocoder
 - pybursts (https://github.com/romain-fontugne/pybursts)
