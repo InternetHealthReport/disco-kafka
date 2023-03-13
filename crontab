@@ -1,0 +1,9 @@
+# Disco
+## Burst detection
+0 0 * * * python3 /app/src/ihrDailyDisco.py
+## Fetch disco data
+0 0 * * * python3 /app/src/ihrDailyDataFetch.py
+## Update probe information
+0 3 * * * python3 /app/src/probeDataProducer.py
+## Clean zombie processes
+0 0 * * * killall --quiet --older-than 168h python3
