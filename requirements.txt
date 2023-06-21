@@ -1,0 +1,8 @@
+matplotlib
+msgpack
+numpy
+arrow
+pybursts
+ripe-atlas-cousteau
+kafka-python
+reverse_geocoder
