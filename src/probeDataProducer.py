@@ -14,7 +14,7 @@ producer = KafkaProducer(bootstrap_servers='localhost:9092', acks=0,
 
 topicName = "probeArchiveData"
 
-""" #Takes too much time!
+#Takes too much time!
 
 date = "2019-07-02"
 
@@ -23,10 +23,10 @@ link = "https://atlas.ripe.net/api/v2/probes/archive?day="+date
 print("Url: ",link)
 
 data = requests.get(link).json()
-"""
 
-with open("../data/probeArchives/2019-07-02.json") as myFile:
-    data = json.loads(myFile.read())
+
+# with open("../data/probeArchives/2019-07-02.json") as myFile:
+    # data = json.loads(myFile.read())
 
 filename = data["source_filename"]
 timestamp = data["snapshot_datetime"]
